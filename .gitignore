@@ -38,3 +38,4 @@ next-env.d.ts
 
 # supabase local generated / temp
 supabase/.temp
+.env*

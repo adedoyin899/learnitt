@@ -2,6 +2,15 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  async redirects() {
+    return [
+      {
+        source: "/",
+        destination: "/today",
+        permanent: false,
+      },
+    ];
+  },
   async rewrites() {
     return [
       {
