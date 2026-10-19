@@ -304,3 +304,35 @@
     }
     scrollbar-width: none;
 }
+
+/* Accessibility: WCAG 2.1 AA Touch Targets (PRD Section 14 & Phase L12) */
+@utility touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.touch-target-44 {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Accessible focus ring for keyboard navigation */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Accessibility: Respect Reduced Motion (PRD Section 14) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

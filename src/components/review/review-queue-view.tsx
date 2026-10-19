@@ -47,9 +47,9 @@ export function ReviewQueueView({
           <CalendarCheck className="h-8 w-8" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Nothing due today.
-          </h2>
+          </h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
             You are completely caught up on your spaced reviews! Continue with your daily learning session or view your mastery progress.
           </p>
@@ -79,9 +79,9 @@ export function ReviewQueueView({
           <Sparkles className="h-8 w-8" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Spaced Review Complete!
-          </h2>
+          </h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
             You reviewed {items.length} item{items.length === 1 ? "" : "s"} ({passedCount} recalled successfully). Your next intervals and due dates have been scheduled.
           </p>

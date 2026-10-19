@@ -210,8 +210,10 @@ export function ReminderSettingsView({
           {/* Time Picker & Timezone */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">Reminder Time</label>
+              <label htmlFor="daily-time-select" className="text-xs font-medium text-foreground">Reminder Time</label>
               <select
+                id="daily-time-select"
+                aria-label="Daily reminder time"
                 value={settings.daily_time || "09:00"}
                 onChange={(e) => setSettings({ ...settings, daily_time: e.target.value })}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-mono focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -226,8 +228,10 @@ export function ReminderSettingsView({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">Timezone</label>
+              <label htmlFor="timezone-select" className="text-xs font-medium text-foreground">Timezone</label>
               <select
+                id="timezone-select"
+                aria-label="Timezone"
                 value={settings.timezone}
                 onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-mono focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -252,6 +256,7 @@ export function ReminderSettingsView({
                   <button
                     key={day.id}
                     type="button"
+                    aria-label={`Toggle ${day.label}`}
                     onClick={() => handleToggleWeekday(day.id)}
                     className={`h-8 px-3 rounded-md text-xs font-medium transition-colors border ${
                       isSelected
@@ -293,6 +298,8 @@ export function ReminderSettingsView({
               </div>
             </div>
             <Switch
+              id="email-toggle"
+              aria-label="Email Notifications"
               checked={settings.email_enabled}
               onCheckedChange={(checked) => setSettings({ ...settings, email_enabled: checked })}
               data-testid="email-toggle"
@@ -311,6 +318,8 @@ export function ReminderSettingsView({
               </div>
             </div>
             <Switch
+              id="push-toggle"
+              aria-label="Web Push Notifications"
               checked={settings.push_enabled}
               onCheckedChange={handlePushToggle}
               data-testid="push-toggle"
@@ -344,8 +353,10 @@ export function ReminderSettingsView({
         </CardHeader>
         <CardContent className="space-y-3 pt-1">
           <div className="space-y-1.5 max-w-xs">
-            <label className="text-xs font-medium text-foreground">Preferred Check-In Day</label>
+            <label htmlFor="weekly-review-day-select" className="text-xs font-medium text-foreground">Preferred Check-In Day</label>
             <select
+              id="weekly-review-day-select"
+              aria-label="Preferred Check-In Day"
               value={settings.weekly_review_day ?? 0}
               onChange={(e) =>
                 setSettings({ ...settings, weekly_review_day: parseInt(e.target.value, 10) })

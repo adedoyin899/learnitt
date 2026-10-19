@@ -124,11 +124,82 @@ Learnitt implements an `EmailProvider` seam supporting both deterministic in-mem
 
 ---
 
+## Hardening & Production Controls (L12)
+
+Phase L12 hardens Learnitt against security, performance, data loss, and accessibility risks with zero new user-facing features added.
+
+### 1. Account Controls (Epic I)
+- **Data & Materials Export (`POST /export`):** Exports all user data across all tables as formatted JSON (`learnitt-data.json`) and downloads all original uploaded materials as a single `.zip` archive.
+- **Typed Goal Deletion (`DELETE /api/v1/goals/:id`):** Requires typed confirmation matching the exact goal title. Cascades database deletion, deletes associated files from the private materials storage bucket, and cancels queued `ai_jobs`.
+- **Typed Account Deletion (`DELETE /api/v1/account`):** Requires typed confirmation `DELETE`. Permanently purges all user rows across every table, removes all files from the storage bucket, cancels queued jobs, and clears authentication session cookies.
+- **Settings Screen S16:** Displays daily AI generation usage progress against the cap, estimated 7-day token cost, and the material AI consent toggle (`profiles.ai_materials_consent`).
+
+### 2. Security Pass & Rate Limiting
+- **Row Level Security (RLS):** Every user-owned table enforces strict RLS policies (`auth.uid() = owner_id`). Server-only tables (`ai_jobs`, `ai_cache`, `usage_counters`) have empty policies preventing direct client access.
+- **Rate Limits:**
+  - **AI Routes:** Strictly limited to **20 requests / minute per user** (`checkAiRateLimit`). Exceeded requests return `429 Too Many Requests` with `Retry-After: 60`.
+  - **Auth Routes:** Strictly limited to **10 requests / minute per IP** (`checkAuthRateLimit`).
+- **File Upload Protection:** Strict magic-byte header validation (rejecting PE `.exe`, ELF, Mach-O binaries renamed to `.pdf` or `.txt`), null byte checks, filename sanitization preventing directory traversal, and 50MB file size limits.
+- **SSRF Prevention:** Blocks private, loopback (`127.0.0.1`, `localhost`), and cloud metadata (`169.254.169.254`) IP ranges.
+- **Signed URL Expiry:** All storage upload and download URLs strictly expire in **300 seconds (5 minutes)** with zero public storage URLs.
+- **Client Bundle Secret Scanning:** Build-time script `scripts/check-bundle-secrets.mjs` scans all static `.js` chunks and aborts build if `SUPABASE_SERVICE_ROLE_KEY` or any private provider secret is detected.
+- **Service Role Isolation:** The service role key is strictly isolated to server-side background workers and cron endpoints; never imported in client components.
+
+### 3. Data Retention Job
+- **Route:** `POST /api/v1/cron/retention` (protected by `CRON_SECRET`).
+- **Automated Schedule:** Runs daily at 03:00 UTC via Supabase `pg_cron` (`20261019000006_retention_cron.sql`).
+- **Purge Policies:**
+  - `public.ai_cache`: Purged after **30 days**.
+  - `public.ai_jobs`: Completed/failed payloads purged after **30 days**.
+  - `public.usage_counters`: Preserved for **13 months** for annual tracking, then purged.
+
+### 4. Performance & Budgets (PRD Section 14)
+- **Today JS Bundle Size:** Target < 180 KB gzipped. **Actual: 154.95 KB gzipped** (513.08 KB raw).
+- **Bundle Budget Check:** Enforced in CI via `pnpm run check:budget` (`scripts/check-bundle-budget.mjs`).
+- **Lazy-Loaded Heavy Components:** `TimeSeriesChart`, `DocumentViewer`, `CheckInDrawer`, and `SessionView` are dynamically imported on demand.
+- **Cached First Paint:** < 1.0s on mid-range Android over 4G via Dexie IndexedDB cache read before network refresh.
+- **Check-in Save Time:** Perceived save < 100ms via optimistic React state updates with asynchronous IndexedDB background flush (< 10ms).
+
+### 5. Accessibility & Touch Targets
+- **Automated Axe:** Verified with `@axe-core/playwright` across screens (`/today`, `/plan`, `/progress`, `/review`, `/settings`, `/ask`, `/journal`, `/materials`) with zero serious or critical issues.
+- **Touch Targets:** All interactive buttons and controls meet WCAG 2.1 AA **44x44px minimum target size** (`.touch-target-44`).
+- **Reduced Motion:** Full `@media (prefers-reduced-motion: reduce)` support disabling spring transitions and infinite animations.
+
+### 6. Backups & Disaster Recovery
+- **Backup Script:** `./scripts/backup.sh` and `node scripts/backup.mjs` exports all tables to JSON and storage bucket files to timestamped `.tar.gz` bundles.
+- **Restore Script:** `node scripts/restore.mjs` validates restoring into a clean local project in topological foreign-key order.
+- **Runbook:** See [docs/runbooks/backups.md](docs/runbooks/backups.md) for weekly procedures, Supabase 7-day auto-pause behavior, and the Pro tier upgrade decision point ($25/mo at 250MB DB size).
+
+---
+
+## PRD Section 16: Risks & Open Questions Matrix
+
+| # | Risk or Question | Impact | Mitigation or Decision Implemented |
+|---|---|---|---|
+| **R1** | Free AI limits change or drop | Grading and generation stop | Provider seam with fallback provider, daily caps, request caching (`ai_cache`), and graceful `paused_cap` job queuing. |
+| **R2** | Shared free key across users | One user consumes global quota | Per-user rate limiting (20 req/min) and daily usage sub-budgets tracked in `usage_counters`. |
+| **R3** | AI invents resources or grades badly | Trust collapses | URLs must strictly come from search provider candidates; HTTP vetting and dead-link dropping; user overrides on all grades. |
+| **R4** | iOS web push unreliable | Reminders missed | Honest note on iOS requiring home screen addition; email delivery fallback via Resend. |
+| **R5** | Vercel cron minimum interval on plan | Reminders not minute-accurate | Sub-daily scheduling handled via Supabase `pg_cron` calling protected route with `CRON_SECRET`; daily fallback in `vercel.json`. |
+| **R6** | Supabase free-tier pause | App unreachable after 7 days inactivity | Daily reminder and retention crons keep database active; upgrade decision point at 250MB database size. |
+| **R7** | Scope creep into social/speech | Ship date slips | Strict non-goals list maintained: single-user first, multi-user ready, no audio grading in v0.1. |
+| **R8** | Adapt engine feels punitive | User quits | "Compress first", MVD always available, neutral non-judgmental copy, user decides adaptation strategy. |
+| **R9** | Materials contain copyrighted text | Legal exposure for quoting | Chunks indexed privately; tutor shows short citations and paraphrases; materials bucket protected by RLS and 5-min signed URLs. |
+| **R10**| Skill graph quality varies by domain | Plans feel inaccurate | User-editable DAG with prerequisite cycle detection, domain templates, and adapt logs (`goal_changes`). |
+
+### Open Decisions & Locked Defaults (PRD Section 16)
+1. **Study Days:** Monday to Friday, ~96 minutes/day for an 8-hour weekly capacity.
+2. **Applied Skill Verification:** User-confirmed override counts as E2. Skills marked `artifact` require E3 confirmation of expected output.
+3. **First Real Run:** Data engineering is the primary live goal; Health analytics is a test fixture for the import path.
+
+---
+
 ## Repository Documentation
 
 - [Learnitt_PRD.md](Learnitt_PRD.md): Product requirements, data model, API routes, offline sync rules, and test plan.
 - [Learnitt_Architecture.md](Learnitt_Architecture.md): System architecture, pressure tests, component library mapping, and core loop design.
 - [Learnitt_PromptPack.md](Learnitt_PromptPack.md): Phased build plan (L0 to L13) mapped to milestones M0 to M11.
+- [docs/runbooks/backups.md](docs/runbooks/backups.md): Backup execution, restoration testing, and Supabase free-tier maintenance.
 - [linear design.md](linear%20design.md): Design tokens, colors, typography, and density guidelines.
 - [CLAUDE.md](CLAUDE.md): Agent pairing guidelines, 10 system invariants, and copy rules.
 
@@ -137,3 +208,4 @@ Learnitt implements an `EmailProvider` seam supporting both deterministic in-mem
 ## License
 
 Private / Proprietary. All rights reserved.
+

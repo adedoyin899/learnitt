@@ -2,10 +2,8 @@
 
 import * as React from "react"
 import { cva } from "class-variance-authority"
-import { motion, useReducedMotion } from "motion/react"
 
 import { cn } from "@/lib/utils"
-import { spring } from "@/lib/motion"
 
 type ProgressTone = "auto" | "brand" | "success" | "warning" | "destructive"
 
@@ -99,7 +97,6 @@ function Progress({
   "aria-label": ariaLabel,
   ...props
 }: ProgressProps) {
-  const reduce = useReducedMotion() ?? false
   const safeMax = max > 0 ? max : 1
   const clamped = Math.min(
     Math.max(Number.isFinite(value) ? value : 0, 0),
@@ -146,15 +143,13 @@ function Progress({
         aria-valuenow={clamped}
         className={trackVariants({ size })}
       >
-        <motion.div
+        <div
           data-slot="progress-indicator"
           className={cn(
-            "h-full origin-left transition-colors duration-300",
+            "h-full origin-left transition-[width,background-color] duration-300 ease-out motion-reduce:transition-none",
             toneClass[resolved]
           )}
-          initial={reduce ? false : { width: "0%" }}
-          animate={{ width: `${fraction * 100}%` }}
-          transition={reduce ? { duration: 0 } : spring.smooth}
+          style={{ width: `${fraction * 100}%` }}
         />
       </div>
     </div>

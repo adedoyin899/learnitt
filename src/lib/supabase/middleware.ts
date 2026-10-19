@@ -46,7 +46,48 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isAuthRoute = pathname.startsWith("/login") || pathname.startsWith("/auth");
+  const method = request.method;
+
+  const isAuthRoute =
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/api/v1/auth");
+
+  // Check auth rate limit per IP (Phase L12 Requirement 2)
+  if (isAuthRoute && method === "POST") {
+    const { checkAuthRateLimit, rateLimitExceededResponse } = await import(
+      "@/lib/security/rate-limit"
+    );
+    const authLimit = checkAuthRateLimit(request);
+    if (!authLimit.success) {
+      return rateLimitExceededResponse(authLimit);
+    }
+  }
+
+  // Check AI rate limit per user (Phase L12 Requirement 2)
+  const isAiRoute =
+    (pathname.endsWith("/plan/generate") ||
+      pathname.endsWith("/plan/adapt") ||
+      pathname.endsWith("/plan/reschedule") ||
+      pathname.endsWith("/messages") ||
+      pathname.endsWith("/explain") ||
+      pathname.endsWith("/resources/discover") ||
+      pathname.includes("/quizzes/generate")) &&
+    method === "POST";
+
+  if (isAiRoute && user) {
+    const { checkAiRateLimit, rateLimitExceededResponse } = await import(
+      "@/lib/security/rate-limit"
+    );
+    const aiLimit = checkAiRateLimit(user.id);
+    if (!aiLimit.success) {
+      return rateLimitExceededResponse(
+        aiLimit,
+        "AI rate limit exceeded. Maximum 20 AI requests per minute per user."
+      );
+    }
+  }
+
   const isPublicAsset =
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/mock") ||

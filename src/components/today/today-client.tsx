@@ -2,11 +2,22 @@
 
 import * as React from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { db, DexieCheckIn, DexieTodayPayload, DexiePlanItem } from "@/lib/offline/db";
 import { useOfflineSync } from "@/lib/offline/sync";
 import { TodayResponse } from "@/app/api/v1/today/route";
-import { CheckInDrawer, CheckInItem, OutcomeType } from "./check-in-drawer";
-import { SessionView } from "./session-view";
+import type { CheckInItem, OutcomeType } from "./check-in-drawer";
+
+// Lazy-load drawer and session modals to keep initial Today JS bundle under 180 KB gzipped
+const CheckInDrawer = dynamic(
+  () => import("./check-in-drawer").then((mod) => mod.CheckInDrawer),
+  { ssr: false }
+);
+
+const SessionView = dynamic(
+  () => import("./session-view").then((mod) => mod.SessionView),
+  { ssr: false }
+);
 import { EvidenceBadge } from "@/components/evidence/evidence-badge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

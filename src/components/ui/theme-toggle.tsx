@@ -1,16 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { Monitor, Moon, Sun } from "lucide-react"
+import { Moon, Sun } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
 type ThemePreference = "system" | "light" | "dark"
@@ -82,16 +75,6 @@ function useThemePreference() {
   return [preference, setPreference] as const
 }
 
-const options: {
-  value: ThemePreference
-  label: string
-  icon: React.ElementType
-}[] = [
-  { value: "system", label: "System", icon: Monitor },
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
-]
-
 type ThemeToggleProps = Omit<
   React.ComponentProps<typeof Button>,
   "children" | "onClick"
@@ -100,35 +83,33 @@ type ThemeToggleProps = Omit<
 function ThemeToggle({ className, ...props }: ThemeToggleProps) {
   const [preference, set] = useThemePreference()
 
+  const handleToggle = () => {
+    if (preference === "system") set("dark")
+    else if (preference === "dark") set("light")
+    else set("system")
+  }
+
+  const nextTitle =
+    preference === "light"
+      ? "Switch to dark mode"
+      : preference === "dark"
+      ? "Use system theme"
+      : "Switch to light mode"
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          data-slot="theme-toggle"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Change theme"
-          className={className}
-          {...props}
-        >
-          <Sun className="dark:hidden" />
-          <Moon className="hidden dark:block" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[8rem]">
-        <DropdownMenuRadioGroup
-          value={preference}
-          onValueChange={(v) => set(v as ThemePreference)}
-        >
-          {options.map(({ value, label, icon: Icon }) => (
-            <DropdownMenuRadioItem key={value} value={value}>
-              <Icon className={cn("size-4")} />
-              {label}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Button
+      data-slot="theme-toggle"
+      variant="ghost"
+      size="icon-sm"
+      aria-label={nextTitle}
+      title={nextTitle}
+      onClick={handleToggle}
+      className={cn("h-8 w-8 text-muted-foreground hover:text-foreground", className)}
+      {...props}
+    >
+      <Sun className="size-4 dark:hidden" />
+      <Moon className="size-4 hidden dark:block" />
+    </Button>
   )
 }
 

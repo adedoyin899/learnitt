@@ -437,6 +437,21 @@ export function createPgliteSupabaseAdapter(pg: PGlite): SupabaseClient<Database
     },
 
     auth: {
+      async getUser() {
+        return {
+          data: {
+            user: {
+              id: "11111111-1111-1111-1111-111111111111",
+              email: "maz@learnitt.com",
+              aud: "authenticated",
+              app_metadata: {},
+              user_metadata: {},
+              created_at: new Date().toISOString(),
+            },
+          },
+          error: null,
+        };
+      },
       admin: {
         async getUserById(id: string) {
           try {

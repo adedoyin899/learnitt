@@ -30,6 +30,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Rate limit per user (Phase L12 Requirement 2)
+  const { checkAiRateLimit, rateLimitExceededResponse } = await import(
+    "@/lib/security/rate-limit"
+  );
+  const aiLimit = checkAiRateLimit(user.id);
+  if (!aiLimit.success) {
+    return rateLimitExceededResponse(
+      aiLimit,
+      "AI rate limit exceeded. Maximum 20 AI requests per minute per user."
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();
