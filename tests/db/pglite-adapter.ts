@@ -24,8 +24,21 @@ export function createPgliteSupabaseAdapter(pg: PGlite): SupabaseClient<Database
           const params: unknown[] = [];
 
           for (const f of filters) {
-            params.push(f.val);
-            whereParts.push(`${f.col} ${f.op} $${params.length}`);
+            if (f.op === "IN") {
+              const list = f.val as unknown[];
+              if (list.length === 0) {
+                whereParts.push("1 = 0");
+              } else {
+                const placeholders = list.map((v) => {
+                  params.push(v);
+                  return `$${params.length}`;
+                });
+                whereParts.push(`${f.col} IN (${placeholders.join(", ")})`);
+              }
+            } else {
+              params.push(f.val);
+              whereParts.push(`${f.col} ${f.op} $${params.length}`);
+            }
           }
 
           if (orClause) {
@@ -62,6 +75,14 @@ export function createPgliteSupabaseAdapter(pg: PGlite): SupabaseClient<Database
         },
         eq(col: string, val: unknown) {
           filters.push({ col, op: "=", val });
+          return builder;
+        },
+        neq(col: string, val: unknown) {
+          filters.push({ col, op: "<>", val });
+          return builder;
+        },
+        in(col: string, vals: unknown[]) {
+          filters.push({ col, op: "IN", val: vals });
           return builder;
         },
         lte(col: string, val: unknown) {
@@ -227,6 +248,72 @@ export function createPgliteSupabaseAdapter(pg: PGlite): SupabaseClient<Database
           };
 
           return updateBuilder;
+        },
+
+        delete() {
+          const deleteFilters: Array<{ col: string; op: string; val: unknown }> = [];
+
+          async function executeDelete() {
+            try {
+              let sql = `DELETE FROM public.${table}`;
+              const whereParts: string[] = [];
+              const params: unknown[] = [];
+
+              for (const f of deleteFilters) {
+                if (f.op === "IN") {
+                  const list = f.val as unknown[];
+                  if (list.length === 0) {
+                    whereParts.push("1 = 0");
+                  } else {
+                    const placeholders = list.map((v) => {
+                      params.push(v);
+                      return `$${params.length}`;
+                    });
+                    whereParts.push(`${f.col} IN (${placeholders.join(", ")})`);
+                  }
+                } else {
+                  params.push(f.val);
+                  whereParts.push(`${f.col} ${f.op} $${params.length}`);
+                }
+              }
+
+              if (whereParts.length > 0) {
+                sql += ` WHERE ` + whereParts.join(" AND ");
+              }
+              sql += ` RETURNING *`;
+              const res = await pg.query(sql, params);
+              return { data: res.rows, error: null };
+            } catch (err: unknown) {
+              return { data: null, error: { message: (err as Error).message } };
+            }
+          }
+
+          const deleteBuilder = {
+            eq(col: string, val: unknown) {
+              deleteFilters.push({ col, op: "=", val });
+              return deleteBuilder;
+            },
+            neq(col: string, val: unknown) {
+              deleteFilters.push({ col, op: "<>", val });
+              return deleteBuilder;
+            },
+            in(col: string, vals: unknown[]) {
+              deleteFilters.push({ col, op: "IN", val: vals });
+              return deleteBuilder;
+            },
+            select(_cols: string = "*") {
+              return {
+                then(resolve: (value: { data: unknown; error: unknown }) => void) {
+                  executeDelete().then(resolve);
+                },
+              };
+            },
+            then(resolve: (value: { data: unknown; error: unknown }) => void) {
+              executeDelete().then(resolve);
+            },
+          };
+
+          return deleteBuilder;
         },
 
         async upsert(record: Record<string, unknown>, options?: { onConflict?: string }) {

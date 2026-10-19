@@ -16,12 +16,21 @@ export default async function TodayPage() {
     redirect("/login");
   }
 
-  // Fetch user profile from database
+  // Fetch user profile and active goal from database
   const { data: profile } = await supabase
     .from("profiles")
     .select("display_name, timezone")
     .eq("id", user.id)
     .single();
+
+  const { data: activeGoals } = await supabase
+    .from("goals")
+    .select("id, title, domain, target_date, weekly_hours, status")
+    .eq("owner_id", user.id)
+    .eq("status", "active")
+    .limit(1);
+
+  const currentActiveGoal = activeGoals?.[0];
 
   const displayName =
     profile?.display_name ||
@@ -75,7 +84,7 @@ export default async function TodayPage() {
                   <span>Session Status</span>
                 </CardTitle>
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-surface text-muted-foreground border border-border">
-                  L0 FOUNDATION
+                  L3 ACTIVE
                 </span>
               </div>
               <CardDescription className="text-xs">
@@ -98,21 +107,50 @@ export default async function TodayPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-border bg-card">
+          <Card className="border-border bg-card flex flex-col justify-between">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-medium flex items-center gap-2">
-                <CheckCircle2 className="size-4 text-success" />
-                <span>Next Milestone</span>
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-medium flex items-center gap-2">
+                  <CheckCircle2 className="size-4 text-success" />
+                  <span>Active Learning Goal</span>
+                </CardTitle>
+                {currentActiveGoal && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-success/10 text-success border border-success/20 font-semibold uppercase">
+                    Active
+                  </span>
+                )}
+              </div>
               <CardDescription className="text-xs">
-                Milestone M1 / L1: Database schema and complete RLS test suite.
+                {currentActiveGoal
+                  ? `${currentActiveGoal.title} (${currentActiveGoal.weekly_hours} hrs/week)`
+                  : "No active goal committed yet. Use the setup wizard or import a plan."}
               </CardDescription>
             </CardHeader>
-            <CardContent className="text-xs text-muted-foreground space-y-2">
-              <p>
-                Foundation phase L0 provides the protected layout, authenticated session state, mock
-                provider harness, PWA precaching shell, and secret bundle leak protection.
-              </p>
+            <CardContent className="text-xs text-muted-foreground space-y-3">
+              {currentActiveGoal ? (
+                <div className="space-y-1 text-xs">
+                  <p>Target Date: <span className="font-mono text-foreground">{currentActiveGoal.target_date}</span></p>
+                  <p>Domain: <span className="text-foreground">{currentActiveGoal.domain}</span></p>
+                </div>
+              ) : (
+                <p>
+                  Create your goal, set weekly hours, and let Learnitt generate or import a verified skill graph.
+                </p>
+              )}
+              <div className="flex gap-2 pt-1">
+                {currentActiveGoal ? (
+                  <a href={`/goals/${currentActiveGoal.id}/graph`} className="w-full">
+                    <Button size="sm" variant="outline" className="w-full text-xs">
+                      View Skill Graph &amp; Feasibility
+                    </Button>
+                  </a>
+                ) : null}
+                <a href="/goals/new" className={currentActiveGoal ? "w-full" : "w-full"}>
+                  <Button size="sm" variant={currentActiveGoal ? "secondary" : "default"} className="w-full text-xs">
+                    Setup New Goal
+                  </Button>
+                </a>
+              </div>
             </CardContent>
           </Card>
         </div>

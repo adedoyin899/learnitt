@@ -37,7 +37,7 @@ describe("GET /api/v1/jobs/[id] Access Control", () => {
       result_ref: { skills: [] },
     });
 
-    const rows = res.data as Array<{ id: string }>;
+    const rows = res.data as unknown as Array<{ id: string }>;
     userAJobId = rows[0].id;
   });
 

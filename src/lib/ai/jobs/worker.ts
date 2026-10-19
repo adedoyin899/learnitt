@@ -5,6 +5,7 @@ import { AIJobRecord, AIJobStatus, AIProvider, AITask } from "@/lib/ai/types";
 import { getAIProvider } from "@/lib/providers/registry";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { Database } from "@/types/database";
+import { persistSkillGraphForGoal, SkillGraphPayloadItem } from "@/lib/planner/persist-graph";
 
 export interface WorkerTickOptions {
   batchSize?: number;
@@ -85,6 +86,20 @@ export async function runWorkerTick(options: WorkerTickOptions = {}): Promise<Wo
         provider,
         dbClient: client,
       });
+
+      // If task is skill_graph and attached to a goal, persist the skills to the database
+      if (job.task === "skill_graph" && job.payload?.goal_id && execution.data) {
+        const skillsData = (execution.data as { skills?: SkillGraphPayloadItem[] }).skills || [];
+        if (skillsData.length > 0) {
+          await persistSkillGraphForGoal(
+            client,
+            job.owner_id,
+            String(job.payload.goal_id),
+            skillsData,
+            "ai"
+          );
+        }
+      }
 
       // Mark job as succeeded
       await client
