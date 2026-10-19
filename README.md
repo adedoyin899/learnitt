@@ -1,0 +1,43 @@
+# Learnitt
+
+> **Goal-agnostic learning companion. Mobile-first PWA with an offline daily loop.**
+
+Learnitt is designed to solve the fatal flaw of self-directed study: plans go stale, nobody checks progress, and goals lack verifiable evidence of mastery. Learnitt combines automated scheduling, an offline daily execution loop, evidence-based verification, and intelligent adaptation when you fall behind.
+
+---
+
+## The Core Loop
+
+1. **Goal Setup & Feasibility:** Define an outcome, target date, starting level, and weekly study budget. The engine generates an editable prerequisite DAG and performs an honest feasibility analysis.
+2. **Materials & Resource Discovery:** Upload personal notes, PDFs, or links. The app extracts text chunks for retrieval and pairs skills with vetted external resources without AI hallucination.
+3. **Deterministic Planning:** Schedules work against your weekly capacity with daily sessions and a built-in **Minimum Viable Day (MVD)** (15–20 min) version for every task.
+4. **Daily Execution (Offline First):** Fast, distraction-free "Today" dashboard with one-tap check-in (<30 seconds) that runs entirely offline via Dexie (IndexedDB) and syncs when reconnected.
+5. **Verification & Rubric Grading:** Mastery is graded against evidence levels (E0 to E3). AI-graded written answers include visible rubrics and user overrides. Self-ratings never count as verified.
+6. **Adaptation Without Guilt:** When you miss sessions, Learnitt presents clear trade-offs: compress, extend, add time, or reduce scope. It never drops a skill silently.
+
+---
+
+## Tech Stack
+
+- **Frontend:** Next.js (App Router), TypeScript (strict), Tailwind CSS
+- **Design System:** opendraft components (Radix primitives) styled to a dark precision instrument aesthetic (`#08090a` void canvas, `#e4f222` acid-lime action accent)
+- **Data & Auth:** Supabase (Postgres with strict Row Level Security on every table, Auth, Storage with signed URLs)
+- **Offline Storage:** Dexie (IndexedDB) with an idempotent outbox sync engine
+- **AI Seam:** Provider-agnostic abstraction (Gemini Flash-Lite / fallbacks) with strict Zod validation, request caching, and hard daily quotas
+- **Testing:** Vitest for unit & integration, Playwright for end-to-end testing
+
+---
+
+## Repository Documentation
+
+- [Learnitt_PRD.md](Learnitt_PRD.md): Product requirements, data model, API routes, offline sync rules, and test plan.
+- [Learnitt_Architecture.md](Learnitt_Architecture.md): System architecture, pressure tests, component library mapping, and core loop design.
+- [Learnitt_PromptPack.md](Learnitt_PromptPack.md): Phased build plan (L0 to L13) mapped to milestones M0 to M11.
+- [linear design.md](linear%20design.md): Design tokens, colors, typography, and density guidelines.
+- [CLAUDE.md](CLAUDE.md): Agent pairing guidelines, 10 system invariants, and copy rules.
+
+---
+
+## License
+
+Private / Proprietary. All rights reserved.
