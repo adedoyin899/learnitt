@@ -9,7 +9,11 @@ export function getEmailProvider(): EmailProvider {
     return activeEmailProvider;
   }
 
-  const providerType = process.env.EMAIL_PROVIDER || "mock";
+  const apiKey =
+    process.env.RESEND_API_KEY || process.env.EMAIL_PROVIDER_KEY;
+  const isExplicitMock = process.env.EMAIL_PROVIDER === "mock";
+  const providerType =
+    process.env.EMAIL_PROVIDER || (apiKey && !isExplicitMock ? "resend" : "mock");
 
   switch (providerType) {
     case "resend":

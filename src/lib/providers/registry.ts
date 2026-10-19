@@ -11,6 +11,7 @@ import {
   PushProvider,
   SearchProvider,
 } from "./types";
+import { ResendEmailAdapter } from "../email/resend-adapter";
 
 let aiProviderInstance: AIProvider | null = null;
 let searchProviderInstance: SearchProvider | null = null;
@@ -81,7 +82,16 @@ export function getSearchProvider(): SearchProvider {
 
 export function getEmailProvider(): EmailProvider {
   if (!emailProviderInstance) {
-    emailProviderInstance = new MockEmailProvider();
+    const hasResend =
+      !env.MOCK_MODE &&
+      (process.env.EMAIL_PROVIDER === "resend" ||
+        Boolean(process.env.RESEND_API_KEY) ||
+        Boolean(process.env.EMAIL_PROVIDER_KEY));
+    if (hasResend) {
+      emailProviderInstance = new ResendEmailAdapter() as unknown as EmailProvider;
+    } else {
+      emailProviderInstance = new MockEmailProvider();
+    }
   }
   return emailProviderInstance;
 }
