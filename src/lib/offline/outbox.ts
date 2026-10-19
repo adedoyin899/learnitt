@@ -53,6 +53,14 @@ export async function queueOfflineAction(params: QueueActionParams): Promise<Dex
     if (plan_item_id) {
       await db.plan_items.update(plan_item_id, { status: outcome });
     }
+  } else if (operation === "journal") {
+    const { body, content } = payload as { body?: string; content?: string };
+    await db.journal_entries.put({
+      client_id,
+      content: (body || content || "").trim(),
+      created_at: now,
+      synced: false,
+    });
   }
 
   return outboxItem;

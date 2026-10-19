@@ -42,6 +42,12 @@ export default async function TodayPage() {
             <Link href="/plan" className="px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
               Plan
             </Link>
+            <Link href="/ask" className="px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Ask Tutor
+            </Link>
+            <Link href="/journal" className="px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Journal
+            </Link>
           </div>
         </div>
 

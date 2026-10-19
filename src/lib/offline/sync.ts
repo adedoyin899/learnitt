@@ -87,6 +87,25 @@ export async function syncOutbox(): Promise<SyncResult> {
             failed++;
             break;
           }
+        } else if (item.operation === "journal") {
+          const res = await fetch("/api/v1/journal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...item.payload,
+              client_id: item.client_id,
+            }),
+          });
+
+          if (res.ok) {
+            await markOutboxItemSuccess(item.client_id, "journal");
+            synced++;
+          } else {
+            const errData = await res.json().catch(() => ({}));
+            await markOutboxItemFailed(item.client_id, errData.error || `HTTP ${res.status}`);
+            failed++;
+            break;
+          }
         }
       } catch (err: unknown) {
         // Network failure / disconnected

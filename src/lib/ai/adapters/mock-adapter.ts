@@ -3,6 +3,7 @@ import { AIProvider, AIStructuredArgs, AIStructuredResponse, AITask } from "../t
 export class MockAIProvider implements AIProvider {
   readonly id: string;
   private readonly modelName: string;
+  public readonly recordedCalls: AIStructuredArgs[] = [];
 
   constructor(options?: { id?: string; model?: string }) {
     this.id = options?.id || "mock-ai";
@@ -10,6 +11,7 @@ export class MockAIProvider implements AIProvider {
   }
 
   async generateStructured<T>(args: AIStructuredArgs): Promise<AIStructuredResponse<T>> {
+    this.recordedCalls.push(args);
     const fixtureData = this.getDeterministicFixture(args.task, args.user);
     return {
       data: fixtureData as unknown as T,
@@ -492,25 +494,77 @@ export class MockAIProvider implements AIProvider {
         };
       }
 
-      case "answer_question":
+      case "answer_question": {
+        let chunkIds: string[] = [];
+        try {
+          const m = prompt.match(/Retrieved Chunks:\s*(\[\s*\{[\s\S]*?\}\s*\])/);
+          if (m) {
+            const parsed = JSON.parse(m[1]);
+            chunkIds = parsed.map((c: any) => c.id).filter(Boolean);
+          }
+        } catch {
+          // fallback
+        }
+
+        const isGeneral =
+          prompt.toLowerCase().includes("unrelated") ||
+          prompt.toLowerCase().includes("general knowledge") ||
+          prompt.includes("Retrieved Chunks:\n[]") ||
+          prompt.includes('"chunks": []') ||
+          chunkIds.length === 0;
+
+        if (isGeneral) {
+          return {
+            answer: "General knowledge: This topic is not covered in your uploaded materials.",
+            cited_chunk_ids: [],
+            general_knowledge: true,
+          };
+        }
+
         return {
           answer:
             "In SQL, the WHERE clause filters rows before grouping occurs, whereas HAVING filters groups after aggregation.",
-          cited_chunk_ids: ["chunk_sql_01"],
+          cited_chunk_ids: chunkIds.length > 0 ? [chunkIds[0]] : ["chunk_sql_01"],
           general_knowledge: false,
         };
+      }
 
-      case "explain_level":
-        return {
-          explanation:
-            "Think of WHERE as a bouncer at the door checking individual tickets, and HAVING as judging the final groups inside.",
-        };
+      case "explain_level": {
+        const isSimpler = prompt.toLowerCase().includes("simpler") || prompt.toLowerCase().includes("eli5");
+        const isTechnical = prompt.toLowerCase().includes("more_technical") || prompt.toLowerCase().includes("technical");
+        const isExample = prompt.toLowerCase().includes("with_example") || prompt.toLowerCase().includes("example");
 
-      case "weekly_summary":
+        if (isSimpler) {
+          return {
+            explanation:
+              "Think of WHERE as a bouncer at the door checking individual tickets, and HAVING as judging the final groups inside.",
+          };
+        }
+        if (isTechnical) {
+          return {
+            explanation:
+              "In relational algebra query planning, WHERE executes relational selection (σ) prior to hash aggregate grouping (γ), while HAVING applies post-aggregation residual filter expressions.",
+          };
+        }
+        if (isExample) {
+          return {
+            explanation:
+              "For example: SELECT department, COUNT(*) FROM employees WHERE salary > 50000 GROUP BY department HAVING COUNT(*) > 5;",
+          };
+        }
         return {
-          summary:
-            "You completed 4 out of 5 planned sessions this week, totaling 6.4 hours. Both SQL fundamentals and joins quizzes were passed.",
+          explanation: "Here is an explanation adapted to your requested cognitive style.",
         };
+      }
+
+      case "weekly_summary": {
+        const includesJournal = prompt.includes("Journal") || prompt.includes("journal");
+        return {
+          summary: includesJournal
+            ? "You completed 4 study sessions this week (6.4 hours) and reflected in your journal about mastering SQL query planning."
+            : "You completed 4 study sessions this week, totaling 6.4 hours. Both SQL fundamentals and joins quizzes were passed.",
+        };
+      }
 
       default:
         return { result: "ok" };

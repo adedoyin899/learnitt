@@ -221,21 +221,31 @@ export const EXPLAIN_LEVEL_PROMPT_VERSION = "1.0.0";
 
 export function buildExplainLevelPrompt(input: {
   priorAnswer: string;
-  targetStyle: string; // e.g. "eli5", "analogy", "technical", "first_principles"
+  targetStyle: "simpler" | "more_technical" | "with_example" | string;
 }): PromptDefinition {
+  let styleInstruction = "Adapt the explanation to the requested learning style.";
+  if (input.targetStyle === "simpler") {
+    styleInstruction = "Explain in simpler, everyday language with intuitive concepts. Avoid excessive jargon.";
+  } else if (input.targetStyle === "more_technical") {
+    styleInstruction = "Provide an in-depth, rigorous technical explanation with formal principles, underlying mechanics, and architectural details.";
+  } else if (input.targetStyle === "with_example") {
+    styleInstruction = "Provide a concrete, realistic practical example (with code or data queries) that clearly demonstrates the concept in action.";
+  }
+
   return {
     promptVersion: EXPLAIN_LEVEL_PROMPT_VERSION,
     temperature: 0.4,
     maxOutputTokens: 1200,
     system: `You are Learnitt's adaptive explanation tutor.
 ${COMMON_SAFETY_CLAUSE}
-Rewrite the prior explanation according to the learner's requested cognitive style (e.g., simpler analogies, five-year-old style, or rigorous first principles) without compromising factual accuracy.
+Task: ${styleInstruction}
+Do not invent facts or compromise correctness.
 Return valid JSON only matching the schema.`,
-    user: `Prior Explanation:
-${input.priorAnswer}
+    user: `Requested Style: ${input.targetStyle}
+Style Instructions: ${styleInstruction}
 
-Requested Style:
-${input.targetStyle}`,
+Prior Explanation:
+${input.priorAnswer}`,
   };
 }
 
@@ -246,7 +256,16 @@ export const WEEKLY_SUMMARY_PROMPT_VERSION = "1.0.0";
 
 export function buildWeeklySummaryPrompt(input: {
   stats: Record<string, unknown>;
+  journalEntries?: Array<{ body: string; mood?: number | null; created_at: string }>;
 }): PromptDefinition {
+  const parts = [`Weekly Structured Stats:\n${JSON.stringify(input.stats, null, 2)}`];
+
+  if (input.journalEntries && input.journalEntries.length > 0) {
+    parts.push(
+      `Journal Reflections (explicitly included by learner):\n${JSON.stringify(input.journalEntries, null, 2)}`
+    );
+  }
+
   return {
     promptVersion: WEEKLY_SUMMARY_PROMPT_VERSION,
     temperature: 0.3,
@@ -257,9 +276,9 @@ Rules:
 - Summarize the learner's week using the provided structured stats.
 - Never use shame, guilt, or scolding for missed sessions or partial days.
 - Highlight momentum, consistency, and next steps forward.
+${input.journalEntries && input.journalEntries.length > 0 ? "- The learner has explicitly opted to include their journal reflections. Integrate relevant themes without exposing private data." : "- Note: Journal entries are not included."}
 Return valid JSON only matching the schema.`,
-    user: `Weekly Structured Stats:
-${JSON.stringify(input.stats, null, 2)}`,
+    user: parts.join("\n\n"),
   };
 }
 

@@ -634,6 +634,9 @@ export interface Database {
       journal_entries: {
         Row: {
           id: string;
+          entry_id: string;
+          version: number;
+          client_id: string | null;
           owner_id: string;
           body: string;
           mood: number | null;
@@ -643,6 +646,9 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          entry_id?: string;
+          version?: number;
+          client_id?: string | null;
           owner_id: string;
           body: string;
           mood?: number | null;
@@ -652,6 +658,9 @@ export interface Database {
         };
         Update: {
           id?: string;
+          entry_id?: string;
+          version?: number;
+          client_id?: string | null;
           owner_id?: string;
           body?: string;
           mood?: number | null;
