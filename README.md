@@ -88,6 +88,42 @@ Learnitt grounds resource discovery in external search providers to prevent AI h
 
 ---
 
+---
+
+## Reminders & Cron Scheduling Architecture (L11)
+
+Learnitt delivers calm, specific study prompts and weekly check-ins via Web Push and Email only when the user's primary daily study session is incomplete.
+
+### Vercel Plan Cron Limits vs Architecture Decision
+- **Vercel Hobby Plan Restriction:** Vercel Hobby strictly limits cron schedules to **once per day** (minimum interval: 24 hours). Sub-daily or minute-level schedules (`* * * * *`, `*/15 * * * *`) trigger build and deployment errors on Hobby accounts.
+- **Decision: Supabase `pg_cron` Calling Protected Cron Route:**
+  Minute-level scheduling is managed in Postgres via Supabase's `pg_cron` extension calling `POST /api/v1/cron/reminders` with a secure header (`x-cron-secret: <CRON_SECRET>` or `Authorization: Bearer <CRON_SECRET>`).
+- **Why this was chosen:**
+  1. **Timezone & DST Accuracy:** Users select their preferred daily time (e.g. 09:00) in their local IANA timezone (e.g. `Europe/London`, `America/New_York`, `Asia/Tokyo`). A single once-per-day Vercel cron cannot fire at each user's chosen local hour. Minute-level evaluation accurately triggers reminders regardless of Daylight Saving Time shifts.
+  2. **Real-time Completion Awareness:** Reminders only fire if today's primary session is not already completed (`check_ins` status or all `plan_items` marked done). Minute-level ticks prevent sending reminders immediately after a session is completed.
+  3. **Supabase Inactivity Prevention:** Supabase free-tier projects pause after a week of inactivity. Scheduled `pg_cron` executions keep the Postgres instance active and ready.
+  4. **Vercel Fallback Cron:** `vercel.json` includes a daily fallback cron (`0 8 * * *`) to ensure baseline notifications even if Supabase extensions are not yet configured.
+
+### Reminder Invariants & Delivery Seams
+- **Calm, Specific Copy:** Direct copy without guilt: `"Today: Dimensional modelling, 45 min. Minimum version: 15 min."`
+- **Deduplication:** Every send records an entry in `reminder_log(owner_id, kind, day)` preventing duplicate dispatches.
+- **Weekly Check-In (Epic H2):** Sent on the user's chosen weekly review day (`weekly_review_day`), presenting planned vs completed study hours, a single reflection question ("What got in the way?"), and an adaptation prompt if triggered.
+- **Web Push (PWA):** Native Web Push notifications via VAPID with opt-in per device. Honest note on iOS: *"Push works on iPhone only when Learnitt is added to your home screen. Email is the backup."*
+
+---
+
+## Email Provider Configuration & Free Limits (L11)
+
+Learnitt implements an `EmailProvider` seam supporting both deterministic in-memory recording (`mock`) and live email delivery via **Resend** (`resend`).
+
+### Resend Free Tier Limits
+- **Daily Quota:** **100 emails/day** (enforced by `ResendEmailAdapter` via `dailyCap`).
+- **Monthly Quota:** **3,000 emails/month**.
+- **Domains & Verification:** 1 free custom domain with DKIM/SPF verification, or testing deliveries restricted to the account owner email address.
+- **Provider Selection:** Controlled via `EMAIL_PROVIDER=resend` (or `mock` in local dev and automated tests).
+
+---
+
 ## Repository Documentation
 
 - [Learnitt_PRD.md](Learnitt_PRD.md): Product requirements, data model, API routes, offline sync rules, and test plan.

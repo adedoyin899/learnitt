@@ -31,6 +31,22 @@ const nextConfig = {
         ],
         destination: "/api/v1/today",
       },
+      {
+        source: "/reminders",
+        destination: "/api/v1/reminders",
+      },
+      {
+        source: "/cron/reminders",
+        destination: "/api/v1/cron/reminders",
+      },
+      {
+        source: "/push/subscribe",
+        destination: "/api/v1/push/subscribe",
+      },
+      {
+        source: "/check-ins/weekly",
+        destination: "/api/v1/check-ins/weekly",
+      },
     ];
   },
 };

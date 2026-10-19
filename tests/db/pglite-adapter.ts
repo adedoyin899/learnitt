@@ -316,31 +316,82 @@ export function createPgliteSupabaseAdapter(pg: PGlite): SupabaseClient<Database
           return deleteBuilder;
         },
 
-        async upsert(record: Record<string, unknown>, options?: { onConflict?: string }) {
-          const cols = Object.keys(record);
-          const params = Object.values(record);
-          const placeholders = params.map((_, i) => `$${i + 1}`).join(", ");
-          const onConflictCol = options?.onConflict || "cache_key";
-
-          const updateClauses = cols
-            .filter((c) => c !== onConflictCol)
-            .map((c) => `${c} = EXCLUDED.${c}`)
-            .join(", ");
-
-          const sql = `
-            INSERT INTO public.${table} (${cols.join(", ")})
-            VALUES (${placeholders})
-            ON CONFLICT (${onConflictCol}) DO UPDATE
-            SET ${updateClauses}
-            RETURNING *
-          `;
-
-          try {
-            const res = await pg.query(sql, params);
-            return { data: res.rows, error: null };
-          } catch (err: unknown) {
-            return { data: null, error: { message: (err as Error).message } };
+        upsert(record: Record<string, unknown>, options?: { onConflict?: string }) {
+          let onConflictCol = options?.onConflict;
+          if (!onConflictCol) {
+            if (table === "reminder_settings") onConflictCol = "owner_id";
+            else if (table === "push_subscriptions") onConflictCol = "endpoint";
+            else if (table === "reminder_log") onConflictCol = "owner_id, kind, day";
+            else if (table === "check_ins") onConflictCol = "owner_id, client_id";
+            else onConflictCol = "cache_key";
           }
+
+          async function executeUpsert() {
+            const cols = Object.keys(record);
+            const params = Object.values(record);
+            const placeholders = params.map((_, i) => `$${i + 1}`).join(", ");
+
+            const conflictCols = onConflictCol!.split(",").map((s) => s.trim());
+            const updateCols = cols.filter((c) => !conflictCols.includes(c));
+            const updateClauses =
+              updateCols.length > 0
+                ? updateCols.map((c) => `${c} = EXCLUDED.${c}`).join(", ")
+                : `${conflictCols[0]} = EXCLUDED.${conflictCols[0]}`;
+
+            const sql = `
+              INSERT INTO public.${table} (${cols.join(", ")})
+              VALUES (${placeholders})
+              ON CONFLICT (${onConflictCol}) DO UPDATE
+              SET ${updateClauses}
+              RETURNING *
+            `;
+
+            try {
+              const res = await pg.query(sql, params);
+              return { data: res.rows, error: null };
+            } catch (err: unknown) {
+              return { data: null, error: { message: (err as Error).message } };
+            }
+          }
+
+          const upsertBuilder = {
+            select(_cols: string = "*") {
+              return {
+                async maybeSingle() {
+                  const res = await executeUpsert();
+                  return { data: res.data && res.data.length > 0 ? res.data[0] : null, error: res.error };
+                },
+                async single() {
+                  const res = await executeUpsert();
+                  if (res.error) return { data: null, error: res.error };
+                  if (!res.data || res.data.length === 0) {
+                    return { data: null, error: { message: "JSON object requested, no rows returned" } };
+                  }
+                  return { data: res.data[0], error: null };
+                },
+                then(resolve: (value: { data: unknown; error: unknown }) => void) {
+                  executeUpsert().then(resolve);
+                },
+              };
+            },
+            async maybeSingle() {
+              const res = await executeUpsert();
+              return { data: res.data && res.data.length > 0 ? res.data[0] : null, error: res.error };
+            },
+            async single() {
+              const res = await executeUpsert();
+              if (res.error) return { data: null, error: res.error };
+              if (!res.data || res.data.length === 0) {
+                return { data: null, error: { message: "JSON object requested, no rows returned" } };
+              }
+              return { data: res.data[0], error: null };
+            },
+            then(resolve: (value: { data: unknown; error: unknown }) => void) {
+              executeUpsert().then(resolve);
+            },
+          };
+
+          return upsertBuilder;
         },
       };
 
@@ -383,6 +434,24 @@ export function createPgliteSupabaseAdapter(pg: PGlite): SupabaseClient<Database
           resolve({ data: null, error: { message: `Unknown RPC function: ${fn}` } });
         },
       };
+    },
+
+    auth: {
+      admin: {
+        async getUserById(id: string) {
+          try {
+            const res = await pg.query("select id, email from auth.users where id = $1", [id]);
+            return {
+              data: {
+                user: res.rows.length > 0 ? res.rows[0] : null,
+              },
+              error: null,
+            };
+          } catch (err: unknown) {
+            return { data: { user: null }, error: { message: (err as Error).message } };
+          }
+        },
+      },
     },
 
     storage: {
