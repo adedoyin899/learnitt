@@ -50,7 +50,7 @@ export class MockAIProvider implements AIProvider {
           links: [
             {
               skill_id: "sk_sql_basics",
-              chunk_id: "mock_chunk_1",
+              material_id: "mock_mat_1",
               confidence: 0.92,
               reason: "Covers SQL syntax and filtering.",
             },

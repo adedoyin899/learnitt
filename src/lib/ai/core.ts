@@ -40,12 +40,28 @@ export interface ExecuteAITaskResult<T> {
   modelVersion: string;
 }
 
+import { assertMaterialConsent } from "@/lib/materials/consent";
+
 export async function executeAITaskWithRetry<T>(
   params: ExecuteAITaskParams
 ): Promise<ExecuteAITaskResult<T>> {
   const provider = params.provider || getAIProvider();
   const prompt = resolvePrompt(params.task, params.payload);
   const schema = getTaskSchema(params.task);
+
+  // 0. Consent check for material-grounded tasks (PRD I3 & Prompt Requirement 7)
+  const isMaterialBased =
+    params.task === "link_materials" ||
+    Boolean(
+      params.payload?.materials ||
+        params.payload?.material_ids ||
+        params.payload?.chunks ||
+        params.payload?.use_materials
+    );
+
+  if (isMaterialBased && params.dbClient && params.ownerId) {
+    await assertMaterialConsent(params.ownerId, params.dbClient);
+  }
 
   // 1. Cache Check
   const cacheKey = computeAICacheKey({

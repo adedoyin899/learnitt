@@ -346,6 +346,87 @@ export function createPgliteSupabaseAdapter(pg: PGlite): SupabaseClient<Database
 
       return builder;
     },
+
+    rpc(fn: string, args: Record<string, unknown> = {}) {
+      if (fn === "search_material_chunks") {
+        const ownerId = args.p_owner_id as string;
+        const query = args.p_query as string;
+        const goalId = (args.p_goal_id as string) || null;
+        const limit = (args.p_limit as number) || 5;
+
+        const sql = `
+          SELECT c.id, c.material_id, m.title as material_title, c.ordinal, c.content, c.tokens,
+                 ts_rank(c.fts, plainto_tsquery('english', $2)) as rank
+          FROM public.material_chunks c
+          JOIN public.materials m ON m.id = c.material_id
+          WHERE c.owner_id = $1
+            AND ($3::uuid IS NULL OR m.goal_id = $3)
+            AND c.fts @@ plainto_tsquery('english', $2)
+          ORDER BY rank DESC
+          LIMIT $4;
+        `;
+
+        return {
+          async then(resolve: (value: { data: unknown; error: unknown }) => void) {
+            try {
+              const res = await pg.query(sql, [ownerId, query, goalId, limit]);
+              resolve({ data: res.rows, error: null });
+            } catch (err: unknown) {
+              resolve({ data: null, error: { message: (err as Error).message } });
+            }
+          },
+        };
+      }
+
+      return {
+        then(resolve: (value: { data: unknown; error: unknown }) => void) {
+          resolve({ data: null, error: { message: `Unknown RPC function: ${fn}` } });
+        },
+      };
+    },
+
+    storage: {
+      from(_bucket: string) {
+        return {
+          async createSignedUploadUrl(path: string, options?: { expiresIn: number }) {
+            return {
+              data: {
+                signedUrl: `https://mock-storage.local/upload/${path}?expires=${options?.expiresIn || 300}`,
+                token: "mock-upload-token",
+                path,
+              },
+              error: null,
+            };
+          },
+          async createSignedUrl(path: string, expiresIn: number) {
+            return {
+              data: {
+                signedUrl: `https://mock-storage.local/view/${path}?expires=${expiresIn}`,
+              },
+              error: null,
+            };
+          },
+          async upload(path: string, _data: unknown) {
+            return { data: { path }, error: null };
+          },
+          async download(path: string) {
+            const { getMockStorageMap } = await import("@/lib/materials/storage");
+            const buf = getMockStorageMap().get(path);
+            if (!buf) {
+              return { data: null, error: { message: "File not found" } };
+            }
+            return {
+              data: {
+                async arrayBuffer() {
+                  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+                },
+              },
+              error: null,
+            };
+          },
+        };
+      },
+    },
   };
 
   return adapter as unknown as SupabaseClient<Database>;

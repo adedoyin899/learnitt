@@ -6,6 +6,7 @@ import { getAIProvider } from "@/lib/providers/registry";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { Database } from "@/types/database";
 import { persistSkillGraphForGoal, SkillGraphPayloadItem } from "@/lib/planner/persist-graph";
+import { applyProposedLinks } from "@/lib/materials/linking";
 
 export interface WorkerTickOptions {
   batchSize?: number;
@@ -98,6 +99,14 @@ export async function runWorkerTick(options: WorkerTickOptions = {}): Promise<Wo
             skillsData,
             "ai"
           );
+        }
+      }
+
+      // If task is link_materials, apply proposed links while preserving confirmed ones
+      if (job.task === "link_materials" && execution.data) {
+        const proposedLinks = (execution.data as { links?: any[] }).links || [];
+        if (proposedLinks.length > 0) {
+          await applyProposedLinks(job.owner_id, proposedLinks, client);
         }
       }
 

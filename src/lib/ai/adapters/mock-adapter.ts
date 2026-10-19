@@ -346,17 +346,39 @@ export class MockAIProvider implements AIProvider {
           ],
         };
 
-      case "link_materials":
+      case "link_materials": {
+        let skillId = "sk_01";
+        let matId = "mat_sample_1";
+        try {
+          const skillsMatch = prompt.match(/Skills:\s*(\[\s*\{[\s\S]*?\}\s*\])/);
+          const chunksMatch = prompt.match(/(?:Material Chunks|Materials):\s*(\[\s*\{[\s\S]*?\}\s*\])/);
+          if (skillsMatch) {
+            const parsedSkills = JSON.parse(skillsMatch[1]);
+            if (parsedSkills.length > 0 && parsedSkills[0].id) {
+              skillId = parsedSkills[0].id;
+            }
+          }
+          if (chunksMatch) {
+            const parsedChunks = JSON.parse(chunksMatch[1]);
+            if (parsedChunks.length > 0 && (parsedChunks[0].material_id || parsedChunks[0].id)) {
+              matId = parsedChunks[0].material_id || parsedChunks[0].id;
+            }
+          }
+        } catch {
+          // fallback to defaults
+        }
+
         return {
           links: [
             {
-              skill_id: "sk_01",
-              material_id: "mat_sample_1",
+              skill_id: skillId,
+              material_id: matId,
               confidence: 0.95,
-              reason: "Directly covers core Python syntax and dictionary processing.",
+              reason: "Directly covers core domain concepts.",
             },
           ],
         };
+      }
 
       case "search_queries":
         return {
