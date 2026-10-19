@@ -137,16 +137,17 @@ export default function GoalSetupWizardPage() {
 
       let attempts = 0;
       let completed = false;
-      while (attempts < 15 && !completed) {
-        await new Promise((r) => setTimeout(r, 800));
+      while (attempts < 30 && !completed) {
+        await new Promise((r) => setTimeout(r, 1000));
         const statusRes = await fetch(`/api/v1/jobs/${jobId}`);
         if (statusRes.ok) {
           const jobData = await statusRes.json();
-          if (jobData.job.status === "succeeded") {
+          const job = jobData.job || jobData.data;
+          if (job?.status === "succeeded") {
             completed = true;
             break;
-          } else if (jobData.job.status === "failed") {
-            throw new Error(jobData.job.last_error || "Skill graph generation failed. Retry.");
+          } else if (job?.status === "failed") {
+            throw new Error(job.last_error || "Skill graph generation failed. Retry.");
           }
         }
         attempts++;

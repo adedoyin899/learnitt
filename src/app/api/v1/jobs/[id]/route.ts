@@ -42,15 +42,18 @@ export async function GET(
     );
   }
 
+  const jobPayload = {
+    id: job.id,
+    task: job.task,
+    status: job.status,
+    attempts: job.attempts,
+    result_ref: job.result_ref,
+    last_error: job.last_error,
+    created_at: job.created_at,
+  };
+
   return NextResponse.json({
-    data: {
-      id: job.id,
-      task: job.task,
-      status: job.status,
-      attempts: job.attempts,
-      result_ref: job.result_ref,
-      last_error: job.last_error,
-      created_at: job.created_at,
-    },
+    data: jobPayload,
+    job: jobPayload,
   });
 }

@@ -44,6 +44,15 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
       },
     });
 
+    // In production / serverless environments, immediately trigger a worker tick
+    // so the skill graph is generated without relying on an external cron process.
+    try {
+      const { runWorkerTick } = await import("@/lib/ai/jobs/worker");
+      await runWorkerTick({ batchSize: 1 });
+    } catch (tickErr) {
+      console.warn("Inline worker tick non-fatal error:", tickErr);
+    }
+
     return NextResponse.json(
       {
         jobId,
