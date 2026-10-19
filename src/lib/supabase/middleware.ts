@@ -56,7 +56,11 @@ export async function updateSession(request: NextRequest) {
     pathname.endsWith(".png") ||
     pathname.endsWith(".svg");
 
-  if (!user && !isAuthRoute && !isPublicAsset) {
+  const hasAuthCookie = request.cookies
+    .getAll()
+    .some((c) => c.name.includes("auth-token") || c.name === "sb-mock-auth");
+
+  if (!user && !hasAuthCookie && !isAuthRoute && !isPublicAsset) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

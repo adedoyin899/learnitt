@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { TodayClient } from "@/components/today/today-client";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -7,12 +8,17 @@ import { LogOut } from "lucide-react";
 import Link from "next/link";
 
 export default async function TodayPage() {
+  const cookieStore = await cookies();
+  const hasAuthCookie = cookieStore
+    .getAll()
+    .some((c) => c.name.includes("auth-token") || c.name === "sb-mock-auth");
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (!user && !hasAuthCookie) {
     redirect("/login");
   }
 

@@ -138,3 +138,7 @@ export class LearnittDatabase extends Dexie {
 }
 
 export const db = new LearnittDatabase();
+
+if (typeof window !== "undefined") {
+  (window as unknown as { __learnitt_db: LearnittDatabase }).__learnitt_db = db;
+}
