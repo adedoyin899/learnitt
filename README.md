@@ -6,6 +6,49 @@ Learnitt is designed to solve the fatal flaw of self-directed study: plans go st
 
 ---
 
+## Local Development (Mock Mode)
+
+Learnitt is built with strict isolation seams: **the entire development environment, test suites, and mock providers run out of the box with zero external API keys.**
+
+### 1. Prerequisites
+- **Node.js:** v20+ (tested on v22)
+- **Package Manager:** `pnpm` (`npm install -g pnpm`)
+- **Supabase CLI:** (optional for local database container, version 2+)
+
+### 2. Quickstart
+```bash
+# Clone and enter directory
+git clone https://github.com/adedoyin899/learnitt.git
+cd learnitt
+
+# Install dependencies
+pnpm install
+
+# Start local development server in mock mode (no keys required)
+pnpm dev
+```
+Open [http://localhost:3000](http://localhost:3000) in your browser. The app runs in `MOCK_MODE=true` by default:
+- External AI, Search, Email, and Push providers resolve to deterministic mock fixtures.
+- Protected routes redirect unauthenticated users to `/login`.
+- Sign in via Email OTP (using any email and test code `123456`) or Google OAuth.
+
+### 3. Verification & Scripts
+```bash
+# Typecheck
+pnpm run typecheck
+
+# Lint (ESLint 9)
+pnpm run lint
+
+# Run Unit & Integration Test Suite (Vitest)
+pnpm run test
+
+# Production Build & Client Bundle Secret Leak Check
+pnpm run build
+```
+
+---
+
 ## The Core Loop
 
 1. **Goal Setup & Feasibility:** Define an outcome, target date, starting level, and weekly study budget. The engine generates an editable prerequisite DAG and performs an honest feasibility analysis.
