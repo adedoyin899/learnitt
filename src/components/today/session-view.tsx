@@ -3,8 +3,9 @@
 import * as React from "react";
 import { Drawer } from "@/components/motion/drawer";
 import { Button } from "@/components/ui/button";
+import { EvidenceBadge } from "@/components/evidence/evidence-badge";
 import { CheckInItem } from "./check-in-drawer";
-import { Play, Pause, RotateCcw, ExternalLink, FileText, CheckCircle2, X, Clock, AlertCircle } from "lucide-react";
+import { Play, Pause, RotateCcw, ExternalLink, FileText, CheckCircle2, X, Clock, AlertCircle, HelpCircle } from "lucide-react";
 
 export interface SessionViewProps {
   open: boolean;
@@ -103,9 +104,12 @@ export function SessionView({
             <span className="text-[11px] font-mono uppercase text-primary tracking-wider">
               {item.kind || "Learning"} Session
             </span>
-            <h2 className="text-base sm:text-lg font-semibold text-foreground tracking-tight">
-              {item.skill_name}
-            </h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base sm:text-lg font-semibold text-foreground tracking-tight">
+                {item.skill_name}
+              </h2>
+              <EvidenceBadge level={((item as any).evidence_level as any) || 0} />
+            </div>
             <p className="text-xs text-muted-foreground">
               Planned target: <strong className="font-mono text-foreground">{item.planned_minutes} minutes</strong>. Or minimum dose: <strong className="font-mono text-brand">{item.mvd_minutes} minutes</strong>.
             </p>

@@ -7,6 +7,7 @@ import { useOfflineSync } from "@/lib/offline/sync";
 import { TodayResponse } from "@/app/api/v1/today/route";
 import { CheckInDrawer, CheckInItem, OutcomeType } from "./check-in-drawer";
 import { SessionView } from "./session-view";
+import { EvidenceBadge } from "@/components/evidence/evidence-badge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -449,9 +450,12 @@ export function TodayClient({ initialData }: TodayClientProps) {
                   )}
                 </div>
 
-                <h3 className="text-sm sm:text-base font-semibold text-foreground tracking-tight truncate">
-                  {primary.skill_name}
-                </h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-sm sm:text-base font-semibold text-foreground tracking-tight truncate">
+                    {primary.skill_name}
+                  </h3>
+                  <EvidenceBadge level={(primary.evidence_level as any) || 0} />
+                </div>
 
                 {/* MVD Dose information */}
                 <div className="text-xs text-muted-foreground flex flex-col gap-0.5">
@@ -511,9 +515,12 @@ export function TodayClient({ initialData }: TodayClientProps) {
                   )}
                 </div>
 
-                <h3 className="text-sm sm:text-base font-semibold text-foreground tracking-tight truncate">
-                  {review.skill_name}
-                </h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-sm sm:text-base font-semibold text-foreground tracking-tight truncate">
+                    {review.skill_name}
+                  </h3>
+                  <EvidenceBadge level={(review.evidence_level as any) || 0} />
+                </div>
 
                 <span className="text-xs font-mono text-muted-foreground flex items-center gap-1">
                   <Clock className="size-3" />

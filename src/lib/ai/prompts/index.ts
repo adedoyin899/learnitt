@@ -144,8 +144,8 @@ ${COMMON_SAFETY_CLAUSE}
 Rules:
 - Generate questions matching the specified mix (recall multiple choice, recall true/false, applied, artifact).
 - For recall questions: provide options and exact answer_key.
-- For applied/artifact questions: provide a rubric of criteria with weights summing exactly to 100.
-- If chunks are provided, cite source_chunk_ids from the provided chunks.
+- For applied/artifact questions: provide a rubric of 3 to 5 criteria with weights summing exactly to 100.
+- If chunks are provided, cite source_chunk_ids ONLY from the provided chunks.
 Return valid JSON only matching the schema.`,
     user: `Skill: ${input.skill.name} (id: ${input.skill.id})
 Question Mix: ${input.mix || "1 recall, 1 applied"}
@@ -171,8 +171,10 @@ export function buildGradeAppliedPrompt(input: {
 ${COMMON_SAFETY_CLAUSE}
 Rules:
 - Evaluate the learner's answer strictly against each criterion in the rubric.
-- Assign individual criterion scores and an overall total (0 to 100).
+- Assign a score per criterion (0, 1, or 2, where 0 = not demonstrated, 1 = partially demonstrated, 2 = fully mastered), and specific feedback per criterion.
+- Assign an overall total score (0 to 100).
 - Verdict is 'pass' if total >= 70, else 'fail'.
+- Provide a confidence score between 0.0 and 1.0 based on how clearly the answer maps to the rubric.
 - Provide constructive, supportive feedback with specific strengths and areas for improvement.
 Return valid JSON only matching the schema.`,
     user: `Question: ${input.question}

@@ -395,7 +395,22 @@ export class MockAIProvider implements AIProvider {
           relevance: 0.9,
         };
 
-      case "make_quiz":
+      case "make_quiz": {
+        let chunkIds = ["chunk_sql_01"];
+        try {
+          const chunkMatch = prompt.match(/Context Chunks:\s*(\[\s*\{[\s\S]*?\}\s*\])/);
+          if (chunkMatch) {
+            const parsedChunks = JSON.parse(chunkMatch[1]);
+            if (parsedChunks.length > 0 && parsedChunks[0].id) {
+              chunkIds = parsedChunks.map((c: any) => c.id);
+            }
+          }
+        } catch {
+          // fallback
+        }
+
+        const validChunkId = chunkIds[0] || "chunk_sql_01";
+
         return {
           questions: [
             {
@@ -405,7 +420,7 @@ export class MockAIProvider implements AIProvider {
               options: ["WHERE", "HAVING", "ORDER BY", "GROUP BY"],
               answer_key: 0,
               rubric: null,
-              source_chunk_ids: ["chunk_sql_01"],
+              source_chunk_ids: [validChunkId],
               skill_id: "sk_02",
             },
             {
@@ -417,36 +432,65 @@ export class MockAIProvider implements AIProvider {
               rubric: [
                 {
                   criterion: "Explains INNER JOIN behavior",
-                  weight: 50,
+                  weight: 40,
                   description: "Notes that only matching rows from both tables are retained.",
                 },
                 {
                   criterion: "Explains LEFT JOIN behavior",
-                  weight: 50,
+                  weight: 30,
                   description: "Notes all left-table rows are preserved with NULLs for unmatched right.",
                 },
+                {
+                  criterion: "Contrasts analytical use cases",
+                  weight: 30,
+                  description: "Provides realistic examples contrasting data loss vs NULL preservation.",
+                },
               ],
-              source_chunk_ids: ["chunk_sql_01"],
+              source_chunk_ids: [validChunkId],
               skill_id: "sk_02",
             },
           ],
         };
+      }
 
-      case "grade_applied":
+      case "grade_applied": {
+        const isLowConfidence =
+          prompt.includes("low_confidence") || prompt.includes("low confidence");
+        const isFail = prompt.includes("fail_grade");
+
         return {
           criterion_scores: [
-            { criterion: "Accuracy", score: 2, max_score: 2 },
-            { criterion: "Clarity", score: 2, max_score: 2 },
+            {
+              criterion: "Explains INNER JOIN behavior",
+              score: isFail ? 0 : 2,
+              max_score: 2,
+              feedback: isFail ? "Missing core explanation." : "Accurate description of inner join semantics.",
+            },
+            {
+              criterion: "Explains LEFT JOIN behavior",
+              score: isFail ? 1 : 2,
+              max_score: 2,
+              feedback: "Correctly mentions NULL preservation for unmatched rows.",
+            },
+            {
+              criterion: "Contrasts analytical use cases",
+              score: isFail ? 0 : 1,
+              max_score: 2,
+              feedback: "Adequate contrast with real-world examples.",
+            },
           ],
-          total: 85,
-          verdict: "pass",
+          total: isFail ? 40 : 85,
+          verdict: isFail ? "fail" : "pass",
           feedback: {
-            summary: "Clear explanation that covers the core distinction accurately.",
+            summary: isFail
+              ? "Explanation falls short of standard analytical accuracy."
+              : "Clear explanation that covers the core distinction accurately.",
             strengths: ["Properly identified NULL handling in outer joins."],
             improvements: ["Could mention performance implications with large outer tables."],
           },
-          confidence: 0.95,
+          confidence: isLowConfidence ? 0.45 : 0.95,
         };
+      }
 
       case "answer_question":
         return {

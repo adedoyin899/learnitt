@@ -79,7 +79,63 @@ export async function runWorkerTick(options: WorkerTickOptions = {}): Promise<Wo
     const currentAttempts = claimed.attempts;
 
     try {
-      // Execute the task with caching, caps, and schema validation
+      // 2a. Custom dispatch for make_quiz
+      if (job.task === "make_quiz" && job.payload?.skill_id) {
+        const { generateQuizForSkill } = await import("@/lib/quiz/generate");
+        const quizResult = await generateQuizForSkill(
+          client,
+          String(job.payload.skill_id),
+          job.owner_id,
+          provider
+        );
+
+        await client
+          .from("ai_jobs")
+          .update({
+            status: "succeeded",
+            result_ref: { quiz_id: quizResult.quiz.id } as any,
+            last_error: null,
+            locked_until: null,
+          })
+          .eq("id", job.id);
+
+        results.push({
+          id: job.id,
+          task: job.task,
+          status: "succeeded",
+        });
+        continue;
+      }
+
+      // 2b. Custom dispatch for grade_applied
+      if (job.task === "grade_applied" && job.payload?.attempt_id) {
+        const { gradeAppliedAttempt } = await import("@/lib/quiz/grading");
+        const gradeResult = await gradeAppliedAttempt(
+          client,
+          String(job.payload.attempt_id),
+          job.owner_id,
+          provider
+        );
+
+        await client
+          .from("ai_jobs")
+          .update({
+            status: gradeResult.isPending ? "paused_cap" : "succeeded",
+            result_ref: gradeResult.grade ? ({ grade_id: gradeResult.grade.id } as any) : null,
+            last_error: null,
+            locked_until: null,
+          })
+          .eq("id", job.id);
+
+        results.push({
+          id: job.id,
+          task: job.task,
+          status: gradeResult.isPending ? "paused_cap" : "succeeded",
+        });
+        continue;
+      }
+
+      // Execute general task with caching, caps, and schema validation
       const execution = await executeAITaskWithRetry<Record<string, unknown>>({
         ownerId: job.owner_id,
         task: job.task,
@@ -193,5 +249,43 @@ export async function runWorkerTick(options: WorkerTickOptions = {}): Promise<Wo
   return {
     processed: results.length,
     jobs: results,
+  };
+}
+
+/**
+ * Resolves attempts that were in 'pending_grade' status (e.g., when the daily cap resets).
+ */
+export async function resolvePendingGrades(
+  client: SupabaseClient<Database> = createServiceRoleClient(),
+  ownerId?: string,
+  provider?: AIProvider
+): Promise<{ resolved: number; results: any[] }> {
+  const { gradeAppliedAttempt } = await import("@/lib/quiz/grading");
+
+  let query = client.from("attempts").select("id, owner_id").eq("status", "pending_grade");
+  if (ownerId) {
+    query = query.eq("owner_id", ownerId);
+  }
+
+  const { data: pendingAttempts, error } = await query;
+  if (error || !pendingAttempts || pendingAttempts.length === 0) {
+    return { resolved: 0, results: [] };
+  }
+
+  const results: any[] = [];
+  for (const att of pendingAttempts) {
+    try {
+      const res = await gradeAppliedAttempt(client, att.id, att.owner_id, provider);
+      results.push({ attemptId: att.id, ...res });
+    } catch (err: any) {
+      results.push({ attemptId: att.id, error: err.message });
+    }
+  }
+
+  return {
+    resolved: results.filter(
+      (r) => r.attemptStatus === "graded" || r.attemptStatus === "needs_your_review"
+    ).length,
+    results,
   };
 }

@@ -21,6 +21,7 @@ export interface TodayResponse {
     mvd_minutes: number;
     mvd_task: string;
     status: string;
+    evidence_level?: number;
     material?: {
       id: string;
       filename: string;
@@ -42,6 +43,7 @@ export interface TodayResponse {
     mvd_minutes: number;
     mvd_task: string;
     status: string;
+    evidence_level?: number;
     check_in?: {
       id: string;
       outcome: string;
@@ -244,6 +246,7 @@ export async function GET(req: NextRequest) {
           mvd_minutes: primaryRow.mvd_minutes,
           mvd_task: primarySkill?.mvd_task || "Review core concept and write 3 summary bullets.",
           status: primaryRow.status,
+          evidence_level: primarySkill?.evidence_level || 0,
           material: primaryMaterial ? {
             id: primaryMaterial.id,
             filename: primaryMaterial.filename,
@@ -261,6 +264,7 @@ export async function GET(req: NextRequest) {
           mvd_minutes: reviewRow.mvd_minutes,
           mvd_task: "Spaced review recall test.",
           status: reviewRow.status,
+          evidence_level: reviewSkill?.evidence_level || 0,
           check_in: reviewCheckIn || null,
         }
       : null,

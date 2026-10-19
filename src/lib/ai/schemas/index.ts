@@ -183,12 +183,12 @@ const quizQuestionSchema = z
       }
     }
 
-    // Applied and artifact questions must have a rubric summing to 100
+    // Applied and artifact questions must have a rubric of 3 to 5 criteria, weights summing to 100
     if (q.type === "applied" || q.type === "artifact") {
-      if (!q.rubric || q.rubric.length === 0) {
+      if (!q.rubric || q.rubric.length < 3 || q.rubric.length > 5) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Applied or artifact questions must have a rubric",
+          message: `Applied or artifact questions must have a rubric of 3 to 5 criteria (got ${q.rubric ? q.rubric.length : 0})`,
           path: ["rubric"],
         });
       } else {
@@ -212,21 +212,26 @@ export const makeQuizSchema = z.object({
 // 6. Grade Applied Schema (PRD 7.2)
 // ==============================================================================
 
+export const criterionGradeSchema = z.object({
+  criterion: z.string().min(1),
+  score: z.number().int().min(0).max(2), // 0 to 2
+  max_score: z.number().int().min(1).default(2),
+  feedback: z.string().optional(),
+});
+
 export const gradeAppliedSchema = z.object({
-  criterion_scores: z.array(
-    z.object({
-      criterion: z.string().min(1),
-      score: z.number().min(0),
-      max_score: z.number().min(1),
-    })
-  ),
+  criterion_scores: z.array(criterionGradeSchema).min(1),
   total: z.number().int().min(0).max(100),
   verdict: z.enum(["pass", "fail"]),
-  feedback: z.object({
-    summary: z.string().min(1),
-    strengths: z.array(z.string()),
-    improvements: z.array(z.string()),
-  }),
+  feedback: z.union([
+    z.string(),
+    z.object({
+      summary: z.string().optional(),
+      per_criterion: z.record(z.string()).optional(),
+      strengths: z.array(z.string()).optional(),
+      improvements: z.array(z.string()).optional(),
+    }),
+  ]),
   confidence: z.number().min(0).max(1),
 });
 

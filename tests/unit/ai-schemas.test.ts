@@ -119,7 +119,8 @@ describe("AI Task Output Zod Schemas", () => {
             prompt: "Design a schema.",
             rubric: [
               { criterion: "Keys", weight: 40, description: "Primary keys defined" },
-              { criterion: "Types", weight: 60, description: "Data types appropriate" },
+              { criterion: "Types", weight: 30, description: "Data types appropriate" },
+              { criterion: "Indexes", weight: 30, description: "Indexes appropriate" },
             ],
             source_chunk_ids: ["chk_1"],
             skill_id: "sk_1",
@@ -147,6 +148,28 @@ describe("AI Task Output Zod Schemas", () => {
       expect(res.success).toBe(false);
     });
 
+    it("rejects applied question with fewer than 3 rubric criteria", () => {
+      const invalidFewerCriteria = {
+        questions: [
+          {
+            id: "q2",
+            type: "applied",
+            prompt: "Explain joins.",
+            rubric: [
+              { criterion: "Accuracy", weight: 50, description: "Correct" },
+              { criterion: "Clarity", weight: 50, description: "Clear" },
+            ],
+            skill_id: "sk_1",
+          },
+        ],
+      };
+      const res = makeQuizSchema.safeParse(invalidFewerCriteria);
+      expect(res.success).toBe(false);
+      if (!res.success) {
+        expect(res.error.issues.some((i) => i.message.includes("3 to 5 criteria"))).toBe(true);
+      }
+    });
+
     it("rejects applied question when rubric weights do not sum to 100", () => {
       const invalidRubric = {
         questions: [
@@ -156,7 +179,8 @@ describe("AI Task Output Zod Schemas", () => {
             prompt: "Explain joins.",
             rubric: [
               { criterion: "Accuracy", weight: 50, description: "Correct" },
-              { criterion: "Clarity", weight: 40, description: "Clear" }, // Sums to 90, not 100
+              { criterion: "Clarity", weight: 20, description: "Clear" },
+              { criterion: "Examples", weight: 20, description: "Examples" }, // Sums to 90, not 100
             ],
             skill_id: "sk_1",
           },
@@ -208,9 +232,12 @@ describe("AI Task Output Zod Schemas", () => {
   });
 
   describe("grade_applied schema", () => {
-    it("validates criterion scores, verdict, feedback, and confidence", () => {
+    it("validates criterion scores (0 to 2), verdict, feedback, and confidence", () => {
       const validGrade = {
-        criterion_scores: [{ criterion: "Accuracy", score: 40, max_score: 50 }],
+        criterion_scores: [
+          { criterion: "Accuracy", score: 2, max_score: 2, feedback: "Clear code" },
+          { criterion: "Clarity", score: 1, max_score: 2, feedback: "Needs minor polish" },
+        ],
         total: 80,
         verdict: "pass",
         feedback: {
@@ -221,6 +248,13 @@ describe("AI Task Output Zod Schemas", () => {
         confidence: 0.9,
       };
       expect(gradeAppliedSchema.safeParse(validGrade).success).toBe(true);
+
+      // Rejects score > 2
+      const invalidScore = {
+        ...validGrade,
+        criterion_scores: [{ criterion: "Accuracy", score: 3, max_score: 2 }],
+      };
+      expect(gradeAppliedSchema.safeParse(invalidScore).success).toBe(false);
     });
   });
 });
