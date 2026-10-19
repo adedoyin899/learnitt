@@ -40,10 +40,15 @@ export const getEnvSchema = (isMockMode: boolean) =>
           .string()
           .optional()
           .default("")
-          .transform((val) => val || process.env.AI_PROVIDER_KEY || ""),
+          .transform((val) => val || process.env.AI_PROVIDER_KEY || process.env.GEMINI_API_KEY || ""),
     AI_PROVIDER_KEY: isMockMode
       ? z.string().optional().default("mock-ai-provider-key")
-      : z.string().min(1, "AI_PROVIDER_KEY is required when MOCK_MODE is false"),
+      : z
+          .string()
+          .optional()
+          .default("")
+          .transform((val) => val || process.env.AI_API_KEY || process.env.GEMINI_API_KEY || "")
+          .refine((val) => val.length > 0, "AI_PROVIDER_KEY is required when MOCK_MODE is false"),
     AI_FALLBACK_PROVIDER: z.enum(["gemini", "openai", "mock"]).optional(),
     AI_FALLBACK_MODEL: z.string().optional(),
     AI_FALLBACK_API_KEY: z.string().optional(),
