@@ -16,6 +16,21 @@ const nextConfig = {
         source: "/plan/reschedule",
         destination: "/api/v1/plan/reschedule",
       },
+      {
+        source: "/check-ins",
+        destination: "/api/v1/check-ins",
+      },
+      {
+        source: "/today",
+        has: [
+          {
+            type: "header",
+            key: "accept",
+            value: "(.*application/json.*)",
+          },
+        ],
+        destination: "/api/v1/today",
+      },
     ];
   },
 };
