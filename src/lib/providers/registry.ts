@@ -1,5 +1,7 @@
+import { FallbackAIProvider } from "../ai/adapters/fallback-adapter";
+import { MockAIProvider } from "../ai/adapters/mock-adapter";
+import { RealAIProvider } from "../ai/adapters/real-adapter";
 import { env } from "../env";
-import { MockAIProvider } from "./mock/mock-ai";
 import { MockEmailProvider } from "./mock/mock-email";
 import { MockPushProvider } from "./mock/mock-push";
 import { MockSearchProvider } from "./mock/mock-search";
@@ -15,49 +17,52 @@ let searchProviderInstance: SearchProvider | null = null;
 let emailProviderInstance: EmailProvider | null = null;
 let pushProviderInstance: PushProvider | null = null;
 
+export function buildAIProviderFromEnv(): AIProvider {
+  let primary: AIProvider;
+
+  if (env.MOCK_MODE || env.AI_PROVIDER === "mock") {
+    primary = new MockAIProvider({ model: env.AI_MODEL });
+  } else {
+    primary = new RealAIProvider({
+      provider: env.AI_PROVIDER,
+      model: env.AI_MODEL,
+      apiKey: env.AI_API_KEY,
+    });
+  }
+
+  let fallback: AIProvider | null = null;
+  if (env.AI_FALLBACK_PROVIDER) {
+    if (env.AI_FALLBACK_PROVIDER === "mock") {
+      fallback = new MockAIProvider({
+        id: "mock-fallback",
+        model: env.AI_FALLBACK_MODEL || env.AI_MODEL,
+      });
+    } else {
+      fallback = new RealAIProvider({
+        id: "real-fallback",
+        provider: env.AI_FALLBACK_PROVIDER,
+        model: env.AI_FALLBACK_MODEL || env.AI_MODEL,
+        apiKey: env.AI_FALLBACK_API_KEY || env.AI_API_KEY,
+      });
+    }
+  }
+
+  if (fallback) {
+    return new FallbackAIProvider({ primary, fallback });
+  }
+
+  return primary;
+}
+
 export function getAIProvider(): AIProvider {
   if (!aiProviderInstance) {
-    if (env.MOCK_MODE) {
-      aiProviderInstance = new MockAIProvider();
-    } else {
-      // In L0, real provider will be plugged in L2/L3. Fallback to mock with warning if not yet bound.
-      aiProviderInstance = new MockAIProvider();
-    }
+    aiProviderInstance = buildAIProviderFromEnv();
   }
   return aiProviderInstance;
 }
 
-export function getSearchProvider(): SearchProvider {
-  if (!searchProviderInstance) {
-    if (env.MOCK_MODE) {
-      searchProviderInstance = new MockSearchProvider();
-    } else {
-      searchProviderInstance = new MockSearchProvider();
-    }
-  }
-  return searchProviderInstance;
-}
-
-export function getEmailProvider(): EmailProvider {
-  if (!emailProviderInstance) {
-    if (env.MOCK_MODE) {
-      emailProviderInstance = new MockEmailProvider();
-    } else {
-      emailProviderInstance = new MockEmailProvider();
-    }
-  }
-  return emailProviderInstance;
-}
-
-export function getPushProvider(): PushProvider {
-  if (!pushProviderInstance) {
-    if (env.MOCK_MODE) {
-      pushProviderInstance = new MockPushProvider();
-    } else {
-      pushProviderInstance = new MockPushProvider();
-    }
-  }
-  return pushProviderInstance;
+export function setAIProvider(provider: AIProvider | null): void {
+  aiProviderInstance = provider;
 }
 
 export function resetProviderInstances(): void {
@@ -65,4 +70,25 @@ export function resetProviderInstances(): void {
   searchProviderInstance = null;
   emailProviderInstance = null;
   pushProviderInstance = null;
+}
+
+export function getSearchProvider(): SearchProvider {
+  if (!searchProviderInstance) {
+    searchProviderInstance = new MockSearchProvider();
+  }
+  return searchProviderInstance;
+}
+
+export function getEmailProvider(): EmailProvider {
+  if (!emailProviderInstance) {
+    emailProviderInstance = new MockEmailProvider();
+  }
+  return emailProviderInstance;
+}
+
+export function getPushProvider(): PushProvider {
+  if (!pushProviderInstance) {
+    pushProviderInstance = new MockPushProvider();
+  }
+  return pushProviderInstance;
 }

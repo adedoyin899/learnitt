@@ -55,6 +55,7 @@ export interface Database {
           ai_consent_asked_at?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       goals: {
         Row: {
@@ -102,6 +103,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       skills: {
         Row: {
@@ -167,6 +169,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       skill_prereqs: {
         Row: {
@@ -184,6 +187,7 @@ export interface Database {
           skill_id?: string;
           prereq_id?: string;
         };
+        Relationships: [];
       };
       materials: {
         Row: {
@@ -228,6 +232,7 @@ export interface Database {
           status_reason?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       material_chunks: {
         Row: {
@@ -255,6 +260,7 @@ export interface Database {
           content?: string;
           tokens?: number;
         };
+        Relationships: [];
       };
       skill_material_links: {
         Row: {
@@ -278,6 +284,7 @@ export interface Database {
           confidence?: number;
           confirmed?: boolean;
         };
+        Relationships: [];
       };
       resources: {
         Row: {
@@ -331,6 +338,7 @@ export interface Database {
           status?: ResourceStatus;
           found_at?: string;
         };
+        Relationships: [];
       };
       plan_items: {
         Row: {
@@ -381,6 +389,7 @@ export interface Database {
           rescheduled_from?: string | null;
           position?: number;
         };
+        Relationships: [];
       };
       check_ins: {
         Row: {
@@ -416,6 +425,7 @@ export interface Database {
           client_id?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       quizzes: {
         Row: {
@@ -442,6 +452,7 @@ export interface Database {
           model_version?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       quiz_questions: {
         Row: {
@@ -480,6 +491,7 @@ export interface Database {
           rubric?: Json | null;
           source_chunk_ids?: string[];
         };
+        Relationships: [];
       };
       attempts: {
         Row: {
@@ -512,6 +524,7 @@ export interface Database {
           client_id?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       grades: {
         Row: {
@@ -559,6 +572,7 @@ export interface Database {
           is_current?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       conversations: {
         Row: {
@@ -582,6 +596,7 @@ export interface Database {
           skill_id?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       messages: {
         Row: {
@@ -614,6 +629,7 @@ export interface Database {
           general_knowledge?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       journal_entries: {
         Row: {
@@ -643,6 +659,7 @@ export interface Database {
           linked_skill_id?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       skill_reviews: {
         Row: {
@@ -666,6 +683,7 @@ export interface Database {
           due_on?: string;
           last_result?: GradeVerdict | null;
         };
+        Relationships: [];
       };
       goal_changes: {
         Row: {
@@ -692,6 +710,7 @@ export interface Database {
           detail?: Json;
           created_at?: string;
         };
+        Relationships: [];
       };
       ai_jobs: {
         Row: {
@@ -733,6 +752,7 @@ export interface Database {
           locked_until?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       ai_cache: {
         Row: {
@@ -759,6 +779,7 @@ export interface Database {
           result?: Json;
           created_at?: string;
         };
+        Relationships: [];
       };
       usage_counters: {
         Row: {
@@ -782,6 +803,7 @@ export interface Database {
           tokens_in?: number;
           tokens_out?: number;
         };
+        Relationships: [];
       };
       reminder_settings: {
         Row: {
@@ -808,6 +830,7 @@ export interface Database {
           push_enabled?: boolean;
           weekly_review_day?: number | null;
         };
+        Relationships: [];
       };
       push_subscriptions: {
         Row: {
@@ -831,6 +854,7 @@ export interface Database {
           keys?: Json;
           created_at?: string;
         };
+        Relationships: [];
       };
       audit_events: {
         Row: {
@@ -854,6 +878,7 @@ export interface Database {
           detail?: Json | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       reminder_log: {
         Row: {
@@ -874,6 +899,7 @@ export interface Database {
           day?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       saved_cards: {
         Row: {
@@ -900,6 +926,7 @@ export interface Database {
           answer?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
     };
     Views: {
@@ -910,6 +937,7 @@ export interface Database {
           tokens_in: number;
           tokens_out: number;
         };
+        Relationships: [];
       };
     };
     Functions: {

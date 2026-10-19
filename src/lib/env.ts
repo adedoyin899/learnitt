@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AI_CONFIG } from "./config/ai";
 
 const parseBoolean = (val: unknown, fallback: boolean): boolean => {
   if (val === undefined || val === null || val === "") return fallback;
@@ -27,10 +28,28 @@ export const getEnvSchema = (isMockMode: boolean) =>
     SUPABASE_SERVICE_ROLE_KEY: isMockMode
       ? z.string().default("mock-service-role-key-local-development")
       : z.string().min(1, "SUPABASE_SERVICE_ROLE_KEY is required in production"),
+    AI_PROVIDER: z
+      .enum(["gemini", "openai", "mock"])
+      .default(isMockMode ? "mock" : AI_CONFIG.DEFAULT_PROVIDER),
+    AI_MODEL: z
+      .string()
+      .default(isMockMode ? "mock-model" : AI_CONFIG.DEFAULT_MODEL),
+    AI_API_KEY: isMockMode
+      ? z.string().optional().default("mock-ai-api-key")
+      : z
+          .string()
+          .optional()
+          .default("")
+          .transform((val) => val || process.env.AI_PROVIDER_KEY || ""),
     AI_PROVIDER_KEY: isMockMode
       ? z.string().optional().default("mock-ai-provider-key")
       : z.string().min(1, "AI_PROVIDER_KEY is required when MOCK_MODE is false"),
+    AI_FALLBACK_PROVIDER: z.enum(["gemini", "openai", "mock"]).optional(),
+    AI_FALLBACK_MODEL: z.string().optional(),
+    AI_FALLBACK_API_KEY: z.string().optional(),
     AI_FALLBACK_PROVIDER_KEY: z.string().optional(),
+    DAILY_AI_CALL_CAP: z.coerce.number().int().positive().default(AI_CONFIG.DAILY_AI_CALL_CAP),
+    DAILY_USER_AI_CALL_CAP: z.coerce.number().int().positive().default(AI_CONFIG.DAILY_USER_AI_CALL_CAP),
     SEARCH_PROVIDER_KEY: isMockMode
       ? z.string().optional().default("mock-search-key")
       : z.string().min(1, "SEARCH_PROVIDER_KEY is required when MOCK_MODE is false"),

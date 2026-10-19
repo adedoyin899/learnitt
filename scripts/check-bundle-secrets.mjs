@@ -26,6 +26,12 @@ if (process.env.CRON_SECRET && process.env.CRON_SECRET.length > 5) {
 if (process.env.AI_PROVIDER_KEY && process.env.AI_PROVIDER_KEY.length > 5 && process.env.AI_PROVIDER_KEY !== "mock-ai-provider-key") {
   FORBIDDEN_PATTERNS.push(process.env.AI_PROVIDER_KEY);
 }
+if (process.env.AI_API_KEY && process.env.AI_API_KEY.length > 5 && process.env.AI_API_KEY !== "mock-ai-api-key") {
+  FORBIDDEN_PATTERNS.push(process.env.AI_API_KEY);
+}
+if (process.env.AI_FALLBACK_API_KEY && process.env.AI_FALLBACK_API_KEY.length > 5) {
+  FORBIDDEN_PATTERNS.push(process.env.AI_FALLBACK_API_KEY);
+}
 
 export function scanDirectoryForSecrets(dirPath, patterns = FORBIDDEN_PATTERNS) {
   if (!fs.existsSync(dirPath)) {
