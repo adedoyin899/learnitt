@@ -390,12 +390,29 @@ export class MockAIProvider implements AIProvider {
           ],
         };
 
-      case "classify_resource":
+      case "classify_resource": {
+        try {
+          const match = prompt.match(/Classify the following batch of candidate resources:\s*(\[\s*\{[\s\S]*?\}\s*\])/);
+          if (match) {
+            const list = JSON.parse(match[1]);
+            return {
+              candidates: list.map((c: any) => ({
+                url: c.url,
+                type: c.url?.includes("video") || c.url?.includes("youtube") ? "video" : c.url?.includes("docs") ? "docs" : "article",
+                estimated_minutes: 25,
+                relevance: 0.88,
+              })),
+            };
+          }
+        } catch {
+          // fallback
+        }
         return {
           type: "article",
           estimated_minutes: 20,
           relevance: 0.9,
         };
+      }
 
       case "make_quiz": {
         let chunkIds = ["chunk_sql_01"];

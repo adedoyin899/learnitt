@@ -68,6 +68,23 @@ pnpm run build
 - **Offline Storage:** Dexie (IndexedDB) with an idempotent outbox sync engine
 - **AI Seam:** Provider-agnostic abstraction (Gemini Flash-Lite / fallbacks) with strict Zod validation, request caching, and hard daily quotas
 - **Testing:** Vitest for unit & integration, Playwright for end-to-end testing
+- **Search Seam:** Provider-agnostic search adapter (`mock`, `tavily`) with vetted candidate extraction and strict anti-hallucination URL invariants
+
+---
+
+## Search Provider Configuration & Free Limits
+
+Learnitt grounds resource discovery in external search providers to prevent AI hallucinations. Candidates are strictly vetted (live HTTP check, SSRF protection, deduplication, URL normalization, and per-goal exclusions).
+
+### Provider Free Tiers
+- **Mock Provider (`mock`):** Unlimited deterministic local fixture search with zero external dependencies.
+- **Tavily Search API (`tavily`):** Free tier includes **1,000 search API calls/month** (approx. 33 searches/day). Basic search depth with relevance-ranked educational results.
+- **Brave Search API (`brave`):** Free tier includes **2,000 requests/month** (approx. 66 searches/day).
+
+### Search Caps & Quotas
+- **Daily Search Cap:** Configured in `src/lib/config/search.ts` via `SEARCH_CONFIG.DAILY_SEARCH_CALL_CAP` (default: **50 search queries/day**).
+- **Max Queries Per Skill:** Up to 3 targeted queries generated per skill that lacks material or needs depth.
+- **Provider Choice:** Configured at build/runtime via `SEARCH_PROVIDER=mock` or `SEARCH_PROVIDER=tavily`. If quota is reached, discovery jobs cleanly pause with `paused_cap` status.
 
 ---
 

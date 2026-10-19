@@ -355,22 +355,30 @@ function MaterialsLibraryContent() {
           description="Upload and link study materials, textbooks, documentation, and reference links."
         />
 
-        {/* Uncovered Skills Banner (Prompt Requirement 6) */}
+        {/* Uncovered Skills Banner (Prompt Requirement 6 & S06 Discovery) */}
         {goalId && uncoveredSkills.length > 0 && (
-          <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm flex items-start gap-3">
-            <AlertCircle className="size-5 shrink-0 text-warning mt-0.5" />
-            <div className="space-y-1">
-              <span className="font-semibold text-foreground">
-                {uncoveredSkills.length} skills currently have no study materials:
-              </span>
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {uncoveredSkills.map((s) => (
-                  <Badge key={s.id} variant="outline" className="text-xs">
-                    {s.title}
-                  </Badge>
-                ))}
+          <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="size-5 shrink-0 text-warning mt-0.5" />
+              <div className="space-y-1">
+                <span className="font-semibold text-foreground">
+                  {uncoveredSkills.length} skills currently have no study materials:
+                </span>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {uncoveredSkills.map((s) => (
+                    <Badge key={s.id} variant="outline" className="text-xs">
+                      {s.title}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             </div>
+            <Link href={`/goals/${goalId}/resources`}>
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs border-warning/40 hover:bg-warning/20">
+                <Sparkles className="size-3.5 text-brand" />
+                Discover Resources (S06)
+              </Button>
+            </Link>
           </div>
         )}
 

@@ -134,14 +134,23 @@ export const searchQueriesSchema = z.object({
 });
 
 // ==============================================================================
-// 4. Classify Resource Schema (PRD 7.2)
+// 4. Classify Resource Schema (PRD 7.2 & L10 Batching)
 // ==============================================================================
 
-export const classifyResourceSchema = z.object({
+export const singleResourceClassificationSchema = z.object({
+  url: z.string().optional(),
   type: z.enum(["course", "article", "video", "book", "exercise", "docs", "other"]),
   estimated_minutes: z.number().int().min(1).max(720),
   relevance: z.number().min(0).max(1),
 });
+
+export const classifyResourceSchema = z.union([
+  singleResourceClassificationSchema,
+  z.object({
+    candidates: z.array(singleResourceClassificationSchema).max(10),
+  }),
+  z.array(singleResourceClassificationSchema).max(10),
+]);
 
 // ==============================================================================
 // 5. Make Quiz Schema (PRD 7.4)

@@ -232,14 +232,18 @@ describe("L7 End-to-End Verification Flow", () => {
     const recallAttempt = {
       id: "att_recall_1",
       owner_id: ownerId,
-      question_id: recallQ.id,
+      question_id: recallQ!.id,
       answer_text: "0",
       status: "graded",
       client_id: "client_rec_1",
     };
     db._data.attempts.push(recallAttempt);
 
-    const recallMark = markRecallAnswerDeterministically(0, recallQ.answer_key, recallQ.options);
+    const recallMark = markRecallAnswerDeterministically(
+      0,
+      recallQ!.answer_key as any,
+      (recallQ!.options || []) as any
+    );
     expect(recallMark.isCorrect).toBe(true);
     expect(recallMark.score).toBe(100);
     expect(recallMark.verdict).toBe("pass");
@@ -258,7 +262,7 @@ describe("L7 End-to-End Verification Flow", () => {
     const appliedAttempt = {
       id: "att_applied_1",
       owner_id: ownerId,
-      question_id: appliedQ.id,
+      question_id: appliedQ!.id,
       answer_text: "INNER JOIN returns only matching rows. LEFT JOIN returns all left rows.",
       status: "submitted",
       client_id: "client_app_1",

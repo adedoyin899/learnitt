@@ -135,6 +135,36 @@ export async function runWorkerTick(options: WorkerTickOptions = {}): Promise<Wo
         continue;
       }
 
+      // 2c. Custom dispatch for search_queries resource discovery
+      if (job.task === "search_queries" && job.payload?.goal_id) {
+        const { discoverResourcesForGoal } = await import("@/lib/discovery/service");
+        const discoveryResult = await discoverResourcesForGoal({
+          goalId: String(job.payload.goal_id),
+          ownerId: job.owner_id,
+          dbClient: client,
+          aiProvider: provider,
+          skillId: job.payload?.skill_id ? String(job.payload.skill_id) : undefined,
+          maxSkillsToDiscover: job.payload?.max_skills ? Number(job.payload.max_skills) : undefined,
+        });
+
+        await client
+          .from("ai_jobs")
+          .update({
+            status: "succeeded",
+            result_ref: discoveryResult as any,
+            last_error: null,
+            locked_until: null,
+          })
+          .eq("id", job.id);
+
+        results.push({
+          id: job.id,
+          task: job.task,
+          status: "succeeded",
+        });
+        continue;
+      }
+
       // Execute general task with caching, caps, and schema validation
       const execution = await executeAITaskWithRetry<Record<string, unknown>>({
         ownerId: job.owner_id,

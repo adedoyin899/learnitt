@@ -937,6 +937,33 @@ export interface Database {
         };
         Relationships: [];
       };
+      resource_exclusions: {
+        Row: {
+          id: string;
+          owner_id: string;
+          goal_id: string;
+          url: string;
+          reason: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          goal_id: string;
+          url: string;
+          reason?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          owner_id?: string;
+          goal_id?: string;
+          url?: string;
+          reason?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       my_usage_counters: {

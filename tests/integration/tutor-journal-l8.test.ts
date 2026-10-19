@@ -262,7 +262,7 @@ describe("Phase L8: Tutor Q&A and Journal (Epics F & G1)", () => {
       const conv = await createConversation(db, { ownerId, skillId: "sk_1", goalId: "g_1" });
 
       // Mock AI returning both valid chunk and hallucinated/unretrieved chunk
-      provider.generateStructured = async () => ({
+      provider.generateStructured = (async () => ({
         data: {
           answer: "WHERE filters rows before grouping happens.",
           cited_chunk_ids: ["chunk_valid_101", "chunk_hallucinated_999"],
@@ -270,7 +270,7 @@ describe("Phase L8: Tutor Q&A and Journal (Epics F & G1)", () => {
         },
         usage: { inputTokens: 50, outputTokens: 50 },
         modelVersion: "mock-ai-v1",
-      });
+      })) as any;
 
       const result = await postMessageAndGenerateAnswer(db, {
         conversationId: conv.id,

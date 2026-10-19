@@ -107,10 +107,25 @@ Level: ${input.level}`,
 export const CLASSIFY_RESOURCE_PROMPT_VERSION = "1.0.0";
 
 export function buildClassifyResourcePrompt(input: {
-  title: string;
-  snippet: string;
-  domain: string;
+  title?: string;
+  snippet?: string;
+  domain?: string;
+  candidates?: Array<{ url: string; title: string; snippet?: string; domain: string }>;
 }): PromptDefinition {
+  if (input.candidates && input.candidates.length > 0) {
+    return {
+      promptVersion: CLASSIFY_RESOURCE_PROMPT_VERSION,
+      temperature: 0.1,
+      maxOutputTokens: 1500,
+      system: `You are Learnitt's resource classification analyzer.
+${COMMON_SAFETY_CLAUSE}
+For each candidate resource in the batch, categorize the resource type (course, article, video, book, exercise, docs, other), estimate completion time in minutes (1 to 720), and score educational relevance between 0.0 and 1.0.
+Return a JSON object with a 'candidates' array matching the schema.`,
+      user: `Classify the following batch of candidate resources:
+${JSON.stringify(input.candidates, null, 2)}`,
+    };
+  }
+
   return {
     promptVersion: CLASSIFY_RESOURCE_PROMPT_VERSION,
     temperature: 0.1,
@@ -119,9 +134,9 @@ export function buildClassifyResourcePrompt(input: {
 ${COMMON_SAFETY_CLAUSE}
 Categorize the resource type (course, article, video, book, exercise, docs, other), estimate completion time in minutes (1 to 720), and score educational relevance between 0.0 and 1.0.
 Return valid JSON only matching the schema.`,
-    user: `Title: ${input.title}
-Domain: ${input.domain}
-Snippet: ${input.snippet}`,
+    user: `Title: ${input.title || ""}
+Domain: ${input.domain || ""}
+Snippet: ${input.snippet || ""}`,
   };
 }
 
