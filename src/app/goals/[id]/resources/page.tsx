@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { SiteHeader } from "@/components/ui/site-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { ApprovalQueue, ResourceItem } from "@/components/resources/approval-queue";
 import { ArrowLeft } from "lucide-react";
@@ -50,15 +49,7 @@ export default function GoalResourcesPage() {
   }, [goalId]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <SiteHeader
-        brand={
-          <Link href="/" className="font-bold text-lg tracking-tight">
-            <span className="text-primary font-mono">Learnitt</span>
-          </Link>
-        }
-      />
-
+    <div className="flex-1 w-full bg-background text-foreground flex flex-col">
       <main className="flex-1 container max-w-5xl mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
           <Link

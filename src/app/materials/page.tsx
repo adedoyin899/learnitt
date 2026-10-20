@@ -3,7 +3,6 @@
 import * as React from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { SiteHeader } from "@/components/ui/site-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { Dropzone } from "@/components/ui/dropzone";
 import { Button } from "@/components/ui/button";
@@ -341,14 +340,7 @@ function MaterialsLibraryContent() {
   const totalChunks = consentPreviewItems.reduce((acc, curr) => acc + curr.chunkCount, 0);
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
-      <SiteHeader
-        brand={
-          <Link href="/" className="font-bold text-lg tracking-tight">
-            <span className="text-brand">Learnitt</span>
-          </Link>
-        }
-      />
+    <div className="flex-1 w-full bg-background text-foreground pb-20">
       <main className="container max-w-5xl mx-auto px-4 py-8 space-y-8">
         <PageHeader
           title="Materials Library"

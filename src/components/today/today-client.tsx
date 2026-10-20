@@ -36,7 +36,11 @@ import {
   Target,
   AlertTriangle,
   Lock,
+  Plus,
+  Layers,
+  Check,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export interface TodayClientProps {
@@ -47,6 +51,8 @@ export function TodayClient({ initialData }: TodayClientProps) {
   const [data, setData] = React.useState<TodayResponse | null>(initialData ?? null);
   const [isLoading, setIsLoading] = React.useState<boolean>(!initialData);
   const [isRefreshing, setIsRefreshing] = React.useState<boolean>(false);
+  const [selectedGoalId, setSelectedGoalId] = React.useState<string>(initialData?.goal?.id || "");
+  const [isActivatingGoal, setIsActivatingGoal] = React.useState<boolean>(false);
   const [_error, setError] = React.useState<string | null>(null);
 
   // Modal / Drawer states
@@ -68,6 +74,9 @@ export function TodayClient({ initialData }: TodayClientProps) {
         const cached = await db.today_payload.get("current");
         if (cached && cached.payload && isMounted) {
           setData(cached.payload as unknown as TodayResponse);
+          if ((cached.payload as any)?.goal?.id) {
+            setSelectedGoalId((cached.payload as any).goal.id);
+          }
           setIsLoading(false);
         }
 
@@ -87,18 +96,23 @@ export function TodayClient({ initialData }: TodayClientProps) {
     };
   }, []);
 
-  const refreshServerData = async () => {
+  const refreshServerData = async (goalId?: string) => {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       return;
     }
     setIsRefreshing(true);
     try {
-      const res = await fetch("/api/v1/today", {
+      const targetId = goalId !== undefined ? goalId : selectedGoalId;
+      const url = targetId ? `/api/v1/today?goal_id=${targetId}` : "/api/v1/today";
+      const res = await fetch(url, {
         headers: { Accept: "application/json" },
       });
       if (res.ok) {
         const fresh: TodayResponse = await res.json();
         setData(fresh);
+        if (fresh.goal?.id) {
+          setSelectedGoalId(fresh.goal.id);
+        }
         setError(null);
 
         // Mirror to Dexie for offline first paint and local cache
@@ -148,6 +162,32 @@ export function TodayClient({ initialData }: TodayClientProps) {
       // Offline network error is expected if disconnected
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleSelectGoal = async (goalId: string) => {
+    setSelectedGoalId(goalId);
+    await refreshServerData(goalId);
+  };
+
+  const handleActivateGoal = async (goalId: string) => {
+    setIsActivatingGoal(true);
+    try {
+      const res = await fetch(`/api/v1/goals/${goalId}/activate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archiveExisting: true }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to activate plan");
+      }
+      toast.success("Goal set as primary active plan.");
+      await refreshServerData(goalId);
+    } catch (err: unknown) {
+      toast.error((err as Error).message || "Could not activate goal.");
+    } finally {
+      setIsActivatingGoal(false);
     }
   };
 
@@ -321,6 +361,110 @@ export function TodayClient({ initialData }: TodayClientProps) {
         </div>
       ) : null}
 
+      {/* Multi-Goal Plan Switcher */}
+      {data.goals && data.goals.length > 0 && (
+        <div className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur p-3.5 space-y-3 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 font-semibold">
+              <Target className="size-3.5 text-primary" />
+              <span>Learning Plans ({data.goals.length})</span>
+            </span>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/goals/new"
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                <Plus className="size-3" />
+                <span>New Goal</span>
+              </Link>
+              <span className="text-border">·</span>
+              <Link
+                href="/settings?tab=goals"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Manage
+              </Link>
+            </div>
+          </div>
+
+          {/* Goal Selector Chips */}
+          <div
+            className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none"
+            role="tablist"
+            aria-label="Learning Plans"
+          >
+            {data.goals.map((g) => {
+              const isSelected = g.id === (data.goal?.id || selectedGoalId);
+              const isActivePlan = g.status === "active";
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isSelected}
+                  onClick={() => handleSelectGoal(g.id)}
+                  className={cn(
+                    "flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left transition-all shrink-0 select-none",
+                    isSelected
+                      ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/30"
+                      : "border-border/70 bg-background/60 hover:bg-background hover:border-border text-muted-foreground"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "size-2 rounded-full shrink-0",
+                      isActivePlan
+                        ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+                        : "bg-amber-500/80"
+                    )}
+                  />
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className={cn(
+                        "text-xs font-semibold leading-tight truncate max-w-[150px] sm:max-w-[200px]",
+                        isSelected ? "text-foreground" : "text-foreground/80"
+                      )}
+                    >
+                      {g.title}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {g.weekly_hours}h/wk {isActivePlan ? "· Active Focus" : "· Paused"}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+
+            {/* Quick Add Plan Button */}
+            <Link
+              href="/goals/new"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-border/80 bg-background/40 hover:bg-background hover:border-primary/50 text-muted-foreground hover:text-foreground transition-all shrink-0 text-xs font-medium"
+            >
+              <Plus className="size-3.5" />
+              <span>Add Goal</span>
+            </Link>
+          </div>
+
+          {/* Prompt to set as primary if viewing a non-active goal */}
+          {data.goal && data.goal.status !== "active" && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-xs text-amber-600 dark:text-amber-400">
+              <span>
+                Viewing plan for <strong>{data.goal.title}</strong>. Set as primary active plan for daily reminders and notifications?
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isActivatingGoal}
+                onClick={() => handleActivateGoal(data.goal!.id)}
+                className="h-7 text-xs border-amber-500/30 text-amber-600 dark:text-amber-300 hover:bg-amber-500/20 shrink-0 self-end sm:self-auto"
+              >
+                {isActivatingGoal ? "Activating..." : "Set as Primary"}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 2. Top Header & Active Goal Summary */}
       <div className="flex items-center justify-between border-b border-border/50 pb-3">
         <div>
@@ -337,7 +481,7 @@ export function TodayClient({ initialData }: TodayClientProps) {
           <Button
             size="sm"
             variant="ghost"
-            onClick={refreshServerData}
+            onClick={() => void refreshServerData()}
             disabled={isRefreshing}
             className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
             aria-label="Refresh today plan"

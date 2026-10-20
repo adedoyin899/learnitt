@@ -11,7 +11,18 @@ export interface TodayResponse {
     target_date: string;
     weekly_hours: number;
     study_days: number[];
+    status?: string;
+    domain?: string;
   };
+  goals?: Array<{
+    id: string;
+    title: string;
+    target_date: string;
+    weekly_hours: number;
+    study_days: number[];
+    status: string;
+    domain?: string;
+  }>;
   primary_item?: {
     id: string;
     skill_id: string | null;
@@ -86,22 +97,36 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const requestedDate = searchParams.get("date");
+  const requestedGoalId = searchParams.get("goal_id");
   const todayStr = requestedDate || new Date().toISOString().split("T")[0];
 
-  // 1. Fetch user's active goal
-  const { data: activeGoal } = await supabase
+  // 1. Fetch all user goals
+  const { data: userGoals } = await supabase
     .from("goals")
-    .select("id, title, target_date, weekly_hours, study_days, status")
+    .select("id, title, target_date, weekly_hours, study_days, status, domain")
     .eq("owner_id", user.id)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
+    .order("created_at", { ascending: false });
+
+  const allGoals = (userGoals || []).map((g) => ({
+    id: g.id,
+    title: g.title,
+    target_date: g.target_date,
+    weekly_hours: Number(g.weekly_hours),
+    study_days: g.study_days,
+    status: g.status,
+    domain: g.domain,
+  }));
+
+  const activeGoal = requestedGoalId
+    ? allGoals.find((g) => g.id === requestedGoalId) || null
+    : allGoals.find((g) => g.status === "active") || allGoals[0] || null;
 
   if (!activeGoal) {
     return NextResponse.json({
       has_goal: false,
       has_plan: false,
       date: todayStr,
+      goals: allGoals,
       is_mvd_complete: false,
       is_planned_complete: false,
       total_planned_minutes_today: 0,
@@ -130,13 +155,8 @@ export async function GET(req: NextRequest) {
       has_goal: true,
       has_plan: (planCount || 0) > 0,
       date: todayStr,
-      goal: {
-        id: activeGoal.id,
-        title: activeGoal.title,
-        target_date: activeGoal.target_date,
-        weekly_hours: Number(activeGoal.weekly_hours),
-        study_days: activeGoal.study_days,
-      },
+      goal: activeGoal,
+      goals: allGoals,
       is_mvd_complete: false,
       is_planned_complete: false,
       total_planned_minutes_today: 0,
@@ -229,12 +249,15 @@ export async function GET(req: NextRequest) {
     has_goal: true,
     has_plan: true,
     date: todayStr,
+    goals: allGoals,
     goal: {
       id: activeGoal.id,
       title: activeGoal.title,
       target_date: activeGoal.target_date,
       weekly_hours: Number(activeGoal.weekly_hours),
       study_days: activeGoal.study_days,
+      status: activeGoal.status,
+      domain: activeGoal.domain,
     },
     primary_item: primaryRow
       ? {

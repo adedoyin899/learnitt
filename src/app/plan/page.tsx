@@ -3,6 +3,7 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   Calendar,
@@ -11,6 +12,7 @@ import {
   RotateCcw,
   Sparkles,
   Zap,
+  Plus,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +28,6 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { SiteHeader } from "@/components/ui/site-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdaptSheet } from "@/components/plan/adapt-sheet";
@@ -50,9 +51,12 @@ interface GoalSummary {
   weekly_hours: number;
 }
 
-export default function PlanPage() {
+function PlanPageInner() {
+  const searchParams = useSearchParams();
+  const goalIdParam = searchParams.get("goal_id");
+
   const [goals, setGoals] = React.useState<GoalSummary[]>([]);
-  const [selectedGoalId, setSelectedGoalId] = React.useState<string>("");
+  const [selectedGoalId, setSelectedGoalId] = React.useState<string>(goalIdParam || "");
   const [items, setItems] = React.useState<PlannedItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [generating, setGenerating] = React.useState(false);
@@ -75,13 +79,18 @@ export default function PlanPage() {
       const data = await res.json();
       const list = data.goals || [];
       setGoals(list);
-      if (list.length > 0 && !selectedGoalId) {
-        setSelectedGoalId(list[0].id);
+      if (list.length > 0) {
+        if (goalIdParam && list.some((g: any) => g.id === goalIdParam)) {
+          setSelectedGoalId(goalIdParam);
+        } else if (!selectedGoalId) {
+          const active = list.find((g: any) => g.status === "active");
+          setSelectedGoalId(active ? active.id : list[0].id);
+        }
       }
     } catch {
       // Fallback
     }
-  }, [selectedGoalId]);
+  }, [selectedGoalId, goalIdParam]);
 
   const loadPlan = React.useCallback(async (goalId: string) => {
     if (!goalId) return;
@@ -214,35 +223,36 @@ export default function PlanPage() {
   }, [items]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <SiteHeader
-        brand={
-          <Link href="/" className="font-bold text-lg tracking-tight">
-            <span className="text-primary font-mono">Learnitt</span>
-          </Link>
-        }
-      />
-
+    <div className="flex-1 w-full bg-background text-foreground flex flex-col">
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6 space-y-6">
         {/* Top Header */}
         <PageHeader
           title="Study Plan"
           description="Your adaptive day-by-day learning schedule grounded in prerequisites and weekly capacity."
           actions={
-            <div className="flex items-center gap-2">
-              {goals.length > 1 && (
-                <select
-                  value={selectedGoalId}
-                  onChange={(e) => setSelectedGoalId(e.target.value)}
-                  className="bg-card border border-border rounded-md px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  {goals.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.title}
-                    </option>
-                  ))}
-                </select>
+            <div className="flex items-center gap-2 flex-wrap">
+              {goals.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground font-mono">Plan:</span>
+                  <select
+                    value={selectedGoalId}
+                    onChange={(e) => setSelectedGoalId(e.target.value)}
+                    className="bg-card border border-border rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+                  >
+                    {goals.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
+              <Link href="/goals/new">
+                <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 text-primary">
+                  <Plus className="size-3.5" />
+                  <span>New Goal</span>
+                </Button>
+              </Link>
               {items.length > 0 && (
                 <Button
                   variant="outline"
@@ -515,5 +525,19 @@ export default function PlanPage() {
         </Dialog>
       </main>
     </div>
+  );
+}
+
+export default function PlanPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="min-h-screen bg-background flex items-center justify-center p-6 text-xs text-muted-foreground">
+          Loading plan...
+        </div>
+      }
+    >
+      <PlanPageInner />
+    </React.Suspense>
   );
 }

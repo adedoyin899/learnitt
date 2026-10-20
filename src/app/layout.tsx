@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { AppNavigation } from "@/components/navigation/app-navigation";
 import "./globals.css";
 
 const inter = Inter({
@@ -49,8 +50,13 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body className="min-h-screen bg-background text-foreground antialiased selection:bg-primary/20 selection:text-foreground">
-        <Providers>{children}</Providers>
+      <body className="min-h-screen bg-background text-foreground antialiased selection:bg-primary/20 selection:text-foreground flex flex-col">
+        <Providers>
+          <AppNavigation />
+          <div className="flex-1 flex flex-col w-full pb-16 md:pb-0">
+            {children}
+          </div>
+        </Providers>
         <script
           dangerouslySetInnerHTML={{
             __html: `

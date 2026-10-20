@@ -4,7 +4,6 @@ import * as React from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { SiteHeader } from "@/components/ui/site-header";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -74,16 +73,9 @@ export default function MaterialViewerPage() {
     }
   }, [id]);
 
-  const brandElement = (
-    <Link href="/" className="font-bold text-lg tracking-tight">
-      <span className="text-brand">Learnitt</span>
-    </Link>
-  );
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <SiteHeader brand={brandElement} />
+      <div className="flex-1 w-full bg-background">
         <main className="container max-w-5xl mx-auto px-4 py-12 text-center text-sm text-muted-foreground">
           Loading material details...
         </main>
@@ -93,8 +85,7 @@ export default function MaterialViewerPage() {
 
   if (!material) {
     return (
-      <div className="min-h-screen bg-background">
-        <SiteHeader brand={brandElement} />
+      <div className="flex-1 w-full bg-background">
         <main className="container max-w-5xl mx-auto px-4 py-12 text-center space-y-4">
           <p className="text-muted-foreground">Material not found.</p>
           <Link href="/materials">
@@ -111,8 +102,7 @@ export default function MaterialViewerPage() {
   const isPdf = material.kind === "pdf";
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
-      <SiteHeader brand={brandElement} />
+    <div className="flex-1 w-full bg-background text-foreground pb-20">
       <main className="container max-w-5xl mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between">
           <Link href="/materials">
