@@ -98,23 +98,38 @@ export async function updateSession(request: NextRequest) {
 
   const isApiRoute = pathname.startsWith("/api");
 
-  const hasAuthCookie = request.cookies
-    .getAll()
-    .some((c) => c.name.includes("auth-token") || c.name === "sb-mock-auth");
+  const isLiveSupabase = Boolean(
+    env.NEXT_PUBLIC_SUPABASE_URL &&
+    env.NEXT_PUBLIC_SUPABASE_URL.includes("supabase.co")
+  );
 
   const isMockMode = process.env.MOCK_MODE === "true" || env.MOCK_MODE;
-  const isUserAuthenticated = user || (isMockMode && hasAuthCookie);
+  const isMockAuth =
+    !isLiveSupabase &&
+    (request.cookies.has("sb-mock-auth") ||
+      (isMockMode &&
+        request.cookies.getAll().some((c) => c.name.includes("auth-token"))));
+
+  const isUserAuthenticated = Boolean(user || isMockAuth);
+
+  const redirectWithCookies = (targetUrl: URL) => {
+    const redirectRes = NextResponse.redirect(targetUrl);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectRes.cookies.set(cookie.name, cookie.value, cookie);
+    });
+    return redirectRes;
+  };
 
   if (!isUserAuthenticated && !isAuthRoute && !isPublicAsset && !isApiRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
 
   if (isUserAuthenticated && pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/today";
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
 
   return supabaseResponse;
