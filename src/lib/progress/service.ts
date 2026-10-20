@@ -126,11 +126,15 @@ export async function getProgressData(
 
   // Populate planned minutes
   for (const item of planItems) {
+    if (!item.scheduled_date) continue;
     const itemDateStr = typeof item.scheduled_date === "object"
       ? (item.scheduled_date as Date).toISOString().split("T")[0]
       : String(item.scheduled_date).split("T")[0];
 
+    if (!itemDateStr || itemDateStr === "null" || itemDateStr === "undefined") continue;
     const itemDate = new Date(itemDateStr + "T00:00:00Z");
+    if (isNaN(itemDate.getTime())) continue;
+
     const day = itemDate.getDay();
     const diffToMonday = itemDate.getDate() - day + (day === 0 ? -6 : 1);
     const monday = new Date(itemDate);
@@ -146,7 +150,10 @@ export async function getProgressData(
   // Populate done minutes from checkIns
   for (const c of checkIns) {
     const cDateStr = c.created_at ? c.created_at.split("T")[0] : todayStr;
+    if (!cDateStr || cDateStr === "null" || cDateStr === "undefined") continue;
     const cDate = new Date(cDateStr + "T00:00:00Z");
+    if (isNaN(cDate.getTime())) continue;
+
     const day = cDate.getDay();
     const diffToMonday = cDate.getDate() - day + (day === 0 ? -6 : 1);
     const monday = new Date(cDate);

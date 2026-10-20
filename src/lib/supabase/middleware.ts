@@ -107,13 +107,16 @@ export async function updateSession(request: NextRequest) {
     .getAll()
     .some((c) => c.name.includes("auth-token") || c.name === "sb-mock-auth");
 
-  if (!user && !hasAuthCookie && !isAuthRoute && !isPublicAsset && !isApiRoute) {
+  const isMockMode = process.env.MOCK_MODE === "true" || env.MOCK_MODE;
+  const isUserAuthenticated = user || (isMockMode && hasAuthCookie);
+
+  if (!isUserAuthenticated && !isAuthRoute && !isPublicAsset && !isApiRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  if (user && pathname === "/login") {
+  if (isUserAuthenticated && pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/today";
     return NextResponse.redirect(url);

@@ -187,10 +187,10 @@ export function AppNavigation() {
             )}
           </div>
 
-          {/* Desktop Navigation Links (>= md) */}
+          {/* Desktop Navigation Links (>= md) - Icon only for unselected, Icon+Label for selected */}
           <nav
             aria-label="Main Navigation"
-            className="hidden md:flex items-center gap-1 overflow-x-auto py-1 scrollbar-none"
+            className="hidden md:flex items-center gap-1 py-1"
           >
             {MAIN_NAV_ITEMS.map((item) => {
               const active = item.match(pathname);
@@ -199,21 +199,27 @@ export function AppNavigation() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  title={item.label}
+                  aria-label={item.label}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 select-none whitespace-nowrap",
+                    "group flex items-center gap-1.5 rounded-lg text-xs font-medium transition-all duration-200 select-none",
                     active
-                      ? "bg-primary/15 text-primary border border-primary/25 shadow-xs font-semibold"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/70"
+                      ? "bg-primary/15 text-primary border border-primary/25 shadow-xs font-semibold px-3 py-1.5"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/70 p-2"
                   )}
                 >
                   <Icon
                     className={cn(
-                      "size-3.5 transition-transform duration-150 group-hover:scale-110",
-                      active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                      "size-4 transition-transform duration-150 group-hover:scale-110",
+                      active ? "text-primary size-3.5" : "text-muted-foreground group-hover:text-foreground"
                     )}
                   />
-                  <span>{item.label}</span>
+                  {active ? (
+                    <span className="whitespace-nowrap tracking-tight animate-fade-in">{item.label}</span>
+                  ) : (
+                    <span className="sr-only">{item.label}</span>
+                  )}
                 </Link>
               );
             })}
@@ -227,27 +233,33 @@ export function AppNavigation() {
               variant="ghost"
               size="sm"
               onClick={openProductTour}
-              className="hidden md:flex items-center gap-1.5 px-2 py-1.5 h-8 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/70"
+              className="hidden md:flex items-center gap-1.5 p-2 h-8 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/70 rounded-lg"
               aria-label="Start product tour"
+              title="Interactive Product Tour"
             >
-              <HelpCircle className="size-3.5 text-primary" />
-              <span className="hidden xl:inline">Tour</span>
+              <HelpCircle className="size-4 text-primary" />
+              <span className="sr-only">Tour</span>
             </Button>
 
-            {/* Desktop Settings Link */}
+            {/* Desktop Settings Link (Icon only if unselected, Icon+Label if selected) */}
             <Link
               href="/settings"
               aria-label="Settings"
+              title="Settings"
               aria-current={isSettingsActive ? "page" : undefined}
               className={cn(
-                "hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all select-none",
+                "hidden md:flex items-center gap-1.5 rounded-lg text-xs font-medium transition-all duration-200 select-none",
                 isSettingsActive
-                  ? "bg-primary/15 text-primary border border-primary/25 shadow-xs font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/70"
+                  ? "bg-primary/15 text-primary border border-primary/25 shadow-xs font-semibold px-3 py-1.5"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/70 p-2"
               )}
             >
-              <Settings className="size-3.5" />
-              <span className="hidden lg:inline">Settings</span>
+              <Settings className={cn("size-4", isSettingsActive && "size-3.5")} />
+              {isSettingsActive ? (
+                <span className="whitespace-nowrap tracking-tight animate-fade-in">Settings</span>
+              ) : (
+                <span className="sr-only">Settings</span>
+              )}
             </Link>
 
             {/* Theme Toggle */}

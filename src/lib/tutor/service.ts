@@ -92,21 +92,7 @@ export async function listConversations(
   const { ownerId, skillId, goalId } = params;
   let query = supabase
     .from("conversations")
-    .select(`
-      id,
-      goal_id,
-      skill_id,
-      created_at,
-      skills (
-        id,
-        name
-      ),
-      goals (
-        id,
-        title,
-        health_flag
-      )
-    `)
+    .select("id, goal_id, skill_id, created_at")
     .eq("owner_id", ownerId)
     .order("created_at", { ascending: false });
 
@@ -117,11 +103,50 @@ export async function listConversations(
     query = query.eq("goal_id", goalId);
   }
 
-  const { data, error } = await query;
+  const { data: convs, error } = await query;
   if (error) {
     throw new Error(error.message);
   }
-  return data || [];
+
+  const conversations = convs || [];
+  if (conversations.length === 0) {
+    return [];
+  }
+
+  const skillIds = Array.from(
+    new Set(conversations.map((c) => c.skill_id).filter(Boolean))
+  ) as string[];
+  const goalIds = Array.from(
+    new Set(conversations.map((c) => c.goal_id).filter(Boolean))
+  ) as string[];
+
+  const skillMap = new Map<string, { id: string; name: string }>();
+  if (skillIds.length > 0) {
+    const { data: skillsData } = await supabase
+      .from("skills")
+      .select("id, name")
+      .in("id", skillIds);
+    for (const s of skillsData || []) {
+      skillMap.set(s.id, { id: s.id, name: s.name });
+    }
+  }
+
+  const goalMap = new Map<string, { id: string; title: string; health_flag: any }>();
+  if (goalIds.length > 0) {
+    const { data: goalsData } = await supabase
+      .from("goals")
+      .select("id, title, health_flag")
+      .in("id", goalIds);
+    for (const g of goalsData || []) {
+      goalMap.set(g.id, { id: g.id, title: g.title, health_flag: g.health_flag });
+    }
+  }
+
+  return conversations.map((c) => ({
+    ...c,
+    skills: c.skill_id ? skillMap.get(c.skill_id) || null : null,
+    goals: c.goal_id ? goalMap.get(c.goal_id) || null : null,
+  }));
 }
 
 /**
@@ -134,27 +159,33 @@ export async function getConversation(
 ) {
   const { data: conv, error: convErr } = await supabase
     .from("conversations")
-    .select(`
-      id,
-      goal_id,
-      skill_id,
-      created_at,
-      skills (
-        id,
-        name
-      ),
-      goals (
-        id,
-        title,
-        health_flag
-      )
-    `)
+    .select("id, goal_id, skill_id, created_at")
     .eq("id", conversationId)
     .eq("owner_id", ownerId)
-    .single();
+    .maybeSingle();
 
   if (convErr || !conv) {
     throw new Error("Conversation not found");
+  }
+
+  let skillData: { id: string; name: string } | null = null;
+  if (conv.skill_id) {
+    const { data: s } = await supabase
+      .from("skills")
+      .select("id, name")
+      .eq("id", conv.skill_id)
+      .maybeSingle();
+    skillData = s || null;
+  }
+
+  let goalData: { id: string; title: string; health_flag: any } | null = null;
+  if (conv.goal_id) {
+    const { data: g } = await supabase
+      .from("goals")
+      .select("id, title, health_flag")
+      .eq("id", conv.goal_id)
+      .maybeSingle();
+    goalData = g || null;
   }
 
   const { data: messages, error: msgErr } = await supabase

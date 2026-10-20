@@ -14,7 +14,10 @@ export default async function TodayPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && !hasAuthCookie) {
+  const isMockMode = process.env.MOCK_MODE === "true";
+  const isUserAuthenticated = user || (isMockMode && hasAuthCookie);
+
+  if (!isUserAuthenticated) {
     redirect("/login");
   }
 

@@ -96,23 +96,12 @@ export async function listJournalTimeline(
   supabase: SupabaseClient<Database>,
   ownerId: string
 ) {
+  // Query journal entries directly without relying on PostgREST foreign key name resolution
   const { data: entries, error } = await supabase
     .from("journal_entries")
-    .select(`
-      id,
-      entry_id,
-      version,
-      client_id,
-      body,
-      mood,
-      linked_check_in_id,
-      linked_skill_id,
-      created_at,
-      skills (
-        id,
-        name
-      )
-    `)
+    .select(
+      "id, entry_id, version, client_id, body, mood, linked_check_in_id, linked_skill_id, created_at"
+    )
     .eq("owner_id", ownerId)
     .order("created_at", { ascending: false });
 
@@ -120,9 +109,32 @@ export async function listJournalTimeline(
     throw new Error(error.message);
   }
 
+  // Safely resolve skill names for any linked_skill_id
+  const skillIds = Array.from(
+    new Set((entries || []).map((e) => e.linked_skill_id).filter(Boolean))
+  ) as string[];
+
+  const skillMap = new Map<string, { id: string; name: string }>();
+  if (skillIds.length > 0) {
+    const { data: skillsData } = await supabase
+      .from("skills")
+      .select("id, name")
+      .in("id", skillIds);
+
+    for (const s of skillsData || []) {
+      skillMap.set(s.id, { id: s.id, name: s.name });
+    }
+  }
+
+  // Attach skills object to each entry
+  const enrichedEntries = (entries || []).map((e) => ({
+    ...e,
+    skills: e.linked_skill_id ? skillMap.get(e.linked_skill_id) || null : null,
+  }));
+
   // Group by entry_id: the latest version is the head, older versions are history
   const entryGroups = new Map<string, any[]>();
-  for (const item of entries || []) {
+  for (const item of enrichedEntries) {
     const key = item.entry_id || item.id;
     const group = entryGroups.get(key) || [];
     group.push(item);

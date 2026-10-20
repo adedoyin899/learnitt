@@ -61,7 +61,7 @@ export async function getDueReviewItems(
     // Also check if any saved cards exist for the user that could be reviewed
     const { data: generalSavedCards } = await supabase
       .from("saved_cards")
-      .select("id, skill_id, question, answer, skills (name)")
+      .select("id, skill_id, question, answer")
       .eq("owner_id", ownerId)
       .limit(5);
 

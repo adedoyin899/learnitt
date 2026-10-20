@@ -4,8 +4,8 @@ import { createConversation, listConversations } from "@/lib/tutor/service";
 import { z } from "zod";
 
 const createConversationSchema = z.object({
-  skill_id: z.string().uuid().optional().nullable(),
-  goal_id: z.string().uuid().optional().nullable(),
+  skill_id: z.preprocess((val) => (val === "" ? null : val), z.string().uuid().optional().nullable()),
+  goal_id: z.preprocess((val) => (val === "" ? null : val), z.string().uuid().optional().nullable()),
 });
 
 /**
