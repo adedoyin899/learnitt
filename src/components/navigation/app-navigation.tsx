@@ -8,6 +8,7 @@ import {
   BookOpen,
   Bot,
   Calendar,
+  CheckCircle2,
   FolderOpen,
   Grid2X2,
   Layers,
@@ -25,6 +26,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { openProductTour } from "@/components/onboarding/product-tour-modal";
+import { db } from "@/lib/offline/db";
 
 interface NavItem {
   label: string;
@@ -69,6 +71,13 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
     icon: RotateCcw,
     description: "Spaced repetition queue",
     match: (path: string) => path.startsWith("/review"),
+  },
+  {
+    label: "Quizzes",
+    href: "/quizzes",
+    icon: CheckCircle2,
+    description: "Interactive skill tests & assessments",
+    match: (path: string) => path.startsWith("/quizzes"),
   },
   {
     label: "Materials",
@@ -149,6 +158,22 @@ export function AppNavigation() {
     !MOBILE_PRIMARY_HREFS.some((href) => pathname.startsWith(href)) &&
     pathname !== "/" &&
     !pathname.startsWith("/goals");
+
+  const handleSignOutSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    try {
+      await Promise.all([
+        db.today_payload.clear(),
+        db.goals.clear(),
+        db.skills.clear(),
+        db.plan_items.clear(),
+        db.skill_reviews.clear(),
+      ]);
+    } catch {
+      // Ignore Dexie errors
+    }
+    e.currentTarget.submit();
+  };
 
   return (
     <>
@@ -266,7 +291,7 @@ export function AppNavigation() {
             <ThemeToggle />
 
             {/* Desktop Sign Out Form */}
-            <form action="/api/v1/auth/signout" method="POST" className="hidden sm:inline-block">
+            <form action="/api/v1/auth/signout" method="POST" onSubmit={handleSignOutSubmit} className="hidden sm:inline-block">
               <Button
                 type="submit"
                 variant="ghost"
@@ -484,7 +509,7 @@ export function AppNavigation() {
                 <span className="text-xs text-muted-foreground">Toggle Theme</span>
               </div>
 
-              <form action="/api/v1/auth/signout" method="POST">
+              <form action="/api/v1/auth/signout" method="POST" onSubmit={handleSignOutSubmit}>
                 <Button
                   type="submit"
                   variant="outline"

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,17 +11,21 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { OtpInput } from "@/components/ui/otp-input";
 import { PixelField } from "@/components/motion/pixel-field";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTarget = searchParams.get("redirect") || "/today";
   const supabase = createClient();
 
   const [email, setEmail] = React.useState("");
   const [step, setStep] = React.useState<"email" | "otp">("email");
   const [otpCode, setOtpCode] = React.useState("");
+  const [otpLength, setOtpLength] = React.useState<number>(8);
   const [loading, setLoading] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+  const [demoCode, setDemoCode] = React.useState<string | null>(null);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -30,7 +34,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTarget)}`,
         },
       });
       if (error) throw error;
@@ -52,20 +56,42 @@ export default function LoginPage() {
     try {
       setLoading(true);
       setErrorMsg(null);
-      const { error } = await supabase.auth.signInWithOtp({
+      setDemoCode(null);
+
+      // 1. Call server OTP endpoint that uses Supabase Admin + Resend email delivery
+      const res = await fetch("/api/v1/auth/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        if (data.devCode) {
+          // If Resend is running on testing tier and cannot email external recipients,
+          // devCode allows frictionless testing for friends and pilot users
+          setDemoCode(data.devCode);
+          setOtpCode(data.devCode);
+          setOtpLength(data.devCode.length);
+          toast.info(`Verification code: ${data.devCode}`);
+        } else {
+          toast.success("Verification code sent to your email.");
+        }
+        setStep("otp");
+        return;
+      }
+
+      // Fallback directly to client Supabase OTP if endpoint had an issue
+      const { error: sbError } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTarget)}`,
         },
       });
 
-      if (error) {
-        // In local mock mode with unconfigured email provider, inform user or allow simulated dev login
-        if (error.message.includes("fetch failed") || error.message.includes("Mock")) {
-          toast.info("Mock mode: use code 123456 or continue.");
-        } else {
-          throw error;
-        }
+      if (sbError) {
+        throw new Error(data.error || sbError.message || "Failed to send code.");
       }
 
       toast.success("Verification code sent to your email.");
@@ -80,32 +106,40 @@ export default function LoginPage() {
   };
 
   const handleVerifyOtp = async (tokenToVerify?: string) => {
-    const token = tokenToVerify ?? otpCode;
+    const token = (tokenToVerify ?? otpCode).trim();
     if (!token || token.length < 6) {
-      setErrorMsg("Please enter the full 6-digit code.");
+      setErrorMsg("Please enter the full verification code.");
       return;
     }
 
     try {
       setLoading(true);
       setErrorMsg(null);
-      const { error } = await supabase.auth.verifyOtp({
+
+      const { data, error } = await supabase.auth.verifyOtp({
         email: email.trim(),
-        token: token.trim(),
+        token,
         type: "email",
       });
 
       if (error) {
-        if (token === "123456") {
-          // Dev bypass for mock verification in test environments
-          router.push("/today");
-          return;
+        // If regular type: email fails, also check magiclink
+        const { error: mlError } = await supabase.auth.verifyOtp({
+          email: email.trim(),
+          token,
+          type: "magiclink" as any,
+        });
+
+        if (mlError) {
+          throw error;
         }
-        throw error;
       }
 
       toast.success("Signed in successfully.");
-      router.push("/today");
+
+      // Refresh router and perform clean browser navigation to sync all cookies
+      router.refresh();
+      window.location.href = redirectTarget;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Invalid code. Please try again.";
       setErrorMsg(message);
@@ -132,12 +166,12 @@ export default function LoginPage() {
             </span>
           </div>
           <CardTitle className="text-2xl font-semibold tracking-tight">
-            {step === "email" ? "Welcome back" : "Enter verification code"}
+            {step === "email" ? "Welcome to Learnitt" : "Enter verification code"}
           </CardTitle>
           <CardDescription className="text-muted-foreground text-sm">
             {step === "email"
-              ? "Sign in with your email or Google account to continue your learning loop."
-              : `We sent a 6-digit code to ${email}. Enter it below.`}
+              ? "Sign in with your email to continue your personalized study loop."
+              : `We sent a code to ${email}. Enter it below.`}
           </CardDescription>
         </CardHeader>
 
@@ -146,6 +180,18 @@ export default function LoginPage() {
             <Alert variant="destructive" className="py-2 text-xs">
               <AlertDescription>{errorMsg}</AlertDescription>
             </Alert>
+          )}
+
+          {demoCode && (
+            <div className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-xs space-y-1">
+              <div className="flex items-center gap-1.5 font-semibold text-primary">
+                <Sparkles className="size-3.5" />
+                <span>Sign-In Code Ready</span>
+              </div>
+              <p className="text-muted-foreground">
+                Code: <span className="font-mono font-bold text-foreground tracking-wider">{demoCode}</span> (auto-filled below)
+              </p>
+            </div>
           )}
 
           {step === "email" ? (
@@ -207,13 +253,14 @@ export default function LoginPage() {
             <div className="space-y-5">
               <div className="flex justify-center py-2">
                 <OtpInput
-                  length={6}
+                  length={otpLength}
                   value={otpCode}
                   onValueChange={setOtpCode}
                   onComplete={(code) => handleVerifyOtp(code)}
+                  separator={otpLength === 8}
                   autoFocus
                   disabled={loading}
-                  className="gap-2"
+                  className="gap-1.5"
                 />
               </div>
 
@@ -233,22 +280,42 @@ export default function LoginPage() {
                 )}
               </Button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setStep("email");
-                  setOtpCode("");
-                  setErrorMsg(null);
-                }}
-                className="w-full flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <ArrowLeft className="size-3" />
-                Back to email entry
-              </button>
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep("email");
+                    setOtpCode("");
+                    setErrorMsg(null);
+                    setDemoCode(null);
+                  }}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ArrowLeft className="size-3" />
+                  Change email
+                </button>
+
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={(e) => handleSendOtp(e)}
+                  className="text-xs text-primary hover:underline transition-colors"
+                >
+                  Resend code
+                </button>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <LoginContent />
+    </React.Suspense>
   );
 }

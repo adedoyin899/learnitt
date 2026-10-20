@@ -92,8 +92,11 @@ export default function SkillGraphEditorPage() {
       setLoading(true);
       setErrorMsg(null);
       const res = await fetch(`/api/v1/goals/${goalId}`);
+      if (res.status === 401) {
+        throw new Error("Your session expired. Please sign in to view this curriculum.");
+      }
       if (!res.ok) {
-        throw new Error("Goal not found or unauthorized.");
+        throw new Error("Goal not found. Please select an active goal from your dashboard.");
       }
       const data = await res.json();
       setGoal(data.goal);

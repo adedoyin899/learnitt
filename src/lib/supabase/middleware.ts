@@ -3,11 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 
 export async function updateSession(request: NextRequest) {
-  const requestHeaders = new Headers(request.headers);
   let supabaseResponse = NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
+    request,
   });
 
   const supabase = createServerClient(
@@ -29,9 +26,7 @@ export async function updateSession(request: NextRequest) {
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({
-            request: {
-              headers: requestHeaders,
-            },
+            request,
           });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)

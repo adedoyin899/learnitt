@@ -104,7 +104,7 @@ export default function MetricsPage() {
         <div className="text-center space-y-3">
           <Activity className="h-8 w-8 text-primary animate-pulse mx-auto" />
           <p className="text-xs text-muted-foreground font-mono">
-            Calculating PRD Section 18 pilot metrics...
+            Calculating pilot analytics and system metrics...
           </p>
         </div>
       </div>
@@ -116,7 +116,7 @@ export default function MetricsPage() {
       <StateCard
         type="unauthorized"
         title="Sign In for Pilot Metrics"
-        description="PRD Section 18 pilot analytics, MVD completion rates, and AI cost tracking require authentication."
+        description="Pilot analytics, study habit metrics, and AI cost tracking require authentication."
         actionText="Sign In"
         actionHref="/login?redirect=/metrics"
         secondaryText="Return to Today"
@@ -147,15 +147,15 @@ export default function MetricsPage() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono uppercase tracking-wider">
-              <span>Phase L13</span>
+              <span>Analytics</span>
               <ChevronRight className="h-3 w-3" />
-              <span>PRD Section 18</span>
+              <span>Pilot Run</span>
               <ChevronRight className="h-3 w-3" />
-              <span className="text-primary font-semibold">Pilot Metrics</span>
+              <span className="text-primary font-semibold">System Metrics</span>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs font-mono border-primary/40 text-primary">
-                PILOT OPERATOR
+                PILOT RUN
               </Badge>
               <Button
                 size="sm"
@@ -413,7 +413,7 @@ export default function MetricsPage() {
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-primary" />
                 <CardTitle className="text-base font-semibold">
-                  Monthly Review Template (PRD Section 18)
+                  Monthly Performance Review Template
                 </CardTitle>
               </div>
               <div className="flex items-center gap-2">
@@ -443,7 +443,7 @@ export default function MetricsPage() {
           </CardHeader>
           <CardContent className="pt-1">
             <div className="rounded-lg border border-border/50 bg-background/80 p-4 font-mono text-xs text-muted-foreground whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed selection:bg-primary/20">
-              {`# Learnitt Pilot · Monthly Review (${new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })})
+              {`# Learnitt Monthly Review (${new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })})
 
 1. Executive Metrics:
    - MVD Rate: ${metrics.mvd.rate_percent}% (Target: ≥ 80%) [${metrics.mvd.meets_target ? "PASS" : "FLAG"}]

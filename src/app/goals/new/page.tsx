@@ -140,6 +140,9 @@ export default function GoalSetupWizardPage() {
       while (attempts < 30 && !completed) {
         await new Promise((r) => setTimeout(r, 1000));
         const statusRes = await fetch(`/api/v1/jobs/${jobId}`);
+        if (statusRes.status === 401) {
+          throw new Error("Your session expired. Please sign in again.");
+        }
         if (statusRes.ok) {
           const jobData = await statusRes.json();
           const job = jobData.job || jobData.data;
@@ -151,6 +154,10 @@ export default function GoalSetupWizardPage() {
           }
         }
         attempts++;
+      }
+
+      if (!completed) {
+        throw new Error("Skill graph generation is still processing. Please check back in a moment.");
       }
 
       setGenerationStatus("Graph generated. Redirecting to skill graph editor...");
@@ -395,7 +402,7 @@ export default function GoalSetupWizardPage() {
 
                   <Field
                     label="Weekly Study Hours"
-                    hint={`${weeklyHours[0]} hours per week. PRD allows between 1 and 20 hours.`}
+                    hint={`${weeklyHours[0]} hours per week (choose between 1 and 20 hours).`}
                   >
                     <div className="py-2">
                       <Slider

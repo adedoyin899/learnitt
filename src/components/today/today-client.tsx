@@ -274,7 +274,8 @@ export function TodayClient({ initialData }: TodayClientProps) {
     );
   }
 
-  if (!data.has_plan || (!data.primary_item && !data.review_item)) {
+  // Empty state: Goal exists, but no plan has been generated yet
+  if (!data.has_plan) {
     return (
       <div className="max-w-2xl mx-auto py-8 px-4 space-y-4">
         {/* Offline Status Line if disconnected */}
@@ -543,161 +544,255 @@ export function TodayClient({ initialData }: TodayClientProps) {
         </div>
       </div>
 
-      {/* 4. One Primary Action Button (Prompt Requirement 1) */}
-      <div>
-        {!isPlannedDone ? (
-          <Button
-            size="lg"
-            onClick={handleStartSession}
-            className="w-full h-12 text-sm font-semibold gap-2 shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all"
-          >
-            <Play className="size-4 fill-current" />
-            <span>
-              {isMvdDone ? "Continue Full Session" : "Start Today's Session"}
-            </span>
-          </Button>
-        ) : (
-          <Button
-            size="lg"
-            variant="outline"
-            onClick={() => handleOpenCheckInFor(primary, "done")}
-            className="w-full h-12 text-sm font-semibold gap-2 border-success/40 bg-success/5 hover:bg-success/10 text-success"
-          >
-            <CheckCircle2 className="size-4" />
-            <span>Planned Session Completed — Update Check-in</span>
-          </Button>
-        )}
-      </div>
-
-      {/* 5. Task Rows (Prompt Requirement 1 & Screen S08) */}
-      <div className="space-y-3">
-        <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
-          Today&apos;s Scheduled Tasks
-        </h2>
-
-        {/* Primary Session Task Row */}
-        {primary && (
-          <div
-            className={cn(
-              "rounded-xl border p-4 transition-all space-y-3",
-              isPlannedDone
-                ? "border-success/30 bg-success/5"
-                : isMvdDone
-                  ? "border-brand/30 bg-brand/5"
-                  : "border-border/80 bg-card hover:border-border"
+      {/* 4 & 5. If sessions are scheduled for today, render Session Button & Tasks;
+          otherwise, render Rest Day & Upcoming Schedule */}
+      {primary || review ? (
+        <>
+          {/* One Primary Action Button */}
+          <div>
+            {!isPlannedDone ? (
+              <Button
+                size="lg"
+                onClick={handleStartSession}
+                className="w-full h-12 text-sm font-semibold gap-2 shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all"
+              >
+                <Play className="size-4 fill-current" />
+                <span>
+                  {isMvdDone ? "Continue Full Session" : "Start Today's Session"}
+                </span>
+              </Button>
+            ) : (
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => primary && handleOpenCheckInFor(primary, "done")}
+                className="w-full h-12 text-sm font-semibold gap-2 border-success/40 bg-success/5 hover:bg-success/10 text-success"
+              >
+                <CheckCircle2 className="size-4" />
+                <span>Planned Session Completed — Update Check-in</span>
+              </Button>
             )}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-1 flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-surface border border-border/60 text-primary font-semibold">
-                    Primary {primary.kind}
-                  </span>
-                  {primary.status === "done" && (
-                    <span className="text-[10px] font-mono text-success flex items-center gap-0.5 font-medium">
-                      <CheckCircle2 className="size-3" /> Done
-                    </span>
-                  )}
-                  {primary.status === "mvd_only" && (
-                    <span className="text-[10px] font-mono text-brand flex items-center gap-0.5 font-medium">
-                      <Sparkles className="size-3" /> MVD Done
-                    </span>
-                  )}
-                </div>
+          </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-sm sm:text-base font-semibold text-foreground tracking-tight truncate">
-                    {primary.skill_name}
-                  </h3>
-                  <EvidenceBadge level={(primary.evidence_level as any) || 0} />
-                </div>
+          {/* Task Rows */}
+          <div className="space-y-3">
+            <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+              Today&apos;s Scheduled Tasks
+            </h2>
 
-                {/* MVD Dose information */}
-                <div className="text-xs text-muted-foreground flex flex-col gap-0.5">
-                  <div className="flex items-center gap-3 font-mono">
-                    <span className="flex items-center gap-1">
+            {/* Primary Session Task Row */}
+            {primary && (
+              <div
+                className={cn(
+                  "rounded-xl border p-4 transition-all space-y-3",
+                  isPlannedDone
+                    ? "border-success/30 bg-success/5"
+                    : isMvdDone
+                      ? "border-brand/30 bg-brand/5"
+                      : "border-border/80 bg-card hover:border-border"
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1 flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-surface border border-border/60 text-primary font-semibold">
+                        Primary {primary.kind}
+                      </span>
+                      {primary.status === "done" && (
+                        <span className="text-[10px] font-mono text-success flex items-center gap-0.5 font-medium">
+                          <CheckCircle2 className="size-3" /> Done
+                        </span>
+                      )}
+                      {primary.status === "mvd_only" && (
+                        <span className="text-[10px] font-mono text-brand flex items-center gap-0.5 font-medium">
+                          <Sparkles className="size-3" /> MVD Done
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm sm:text-base font-semibold text-foreground tracking-tight truncate">
+                        {primary.skill_name}
+                      </h3>
+                      <EvidenceBadge level={(primary.evidence_level as any) || 0} />
+                    </div>
+
+                    {/* MVD Dose information */}
+                    <div className="text-xs text-muted-foreground flex flex-col gap-0.5">
+                      <div className="flex items-center gap-3 font-mono">
+                        <span className="flex items-center gap-1">
+                          <Clock className="size-3" />
+                          Plan: {primary.planned_minutes} min
+                        </span>
+                        <span className="flex items-center gap-1 text-brand">
+                          <Sparkles className="size-3" />
+                          MVD: {primary.mvd_minutes} min
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground/90 italic pt-0.5 line-clamp-2">
+                        MVD dose: {primary.mvd_task}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Action buttons on row */}
+                  <div className="flex flex-col gap-1.5 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenCheckInFor(primary, isPlannedDone ? "done" : "mvd_only")}
+                      className="h-8 text-xs px-2.5 gap-1.5"
+                    >
+                      <CheckCircle2 className="size-3.5" />
+                      <span>Check In</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleStartSession}
+                      className="h-8 text-xs px-2.5 text-muted-foreground hover:text-foreground"
+                    >
+                      Launch
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Review Block Task Row */}
+            {review && (
+              <div className="rounded-xl border border-border/80 bg-card p-4 transition-all space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1 flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-surface border border-border/60 text-warning font-semibold">
+                        Spaced Review
+                      </span>
+                      {review.status === "done" && (
+                        <span className="text-[10px] font-mono text-success flex items-center gap-0.5 font-medium">
+                          <CheckCircle2 className="size-3" /> Done
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm sm:text-base font-semibold text-foreground tracking-tight truncate">
+                        {review.skill_name}
+                      </h3>
+                      <EvidenceBadge level={(review.evidence_level as any) || 0} />
+                    </div>
+
+                    <span className="text-xs font-mono text-muted-foreground flex items-center gap-1">
                       <Clock className="size-3" />
-                      Plan: {primary.planned_minutes} min
-                    </span>
-                    <span className="flex items-center gap-1 text-brand">
-                      <Sparkles className="size-3" />
-                      MVD: {primary.mvd_minutes} min
+                      Planned: {review.planned_minutes} min
                     </span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground/90 italic pt-0.5 line-clamp-2">
-                    MVD dose: {primary.mvd_task}
-                  </p>
+
+                  <div className="flex flex-col gap-1.5 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenCheckInFor(review, "done")}
+                      className="h-8 text-xs px-2.5 gap-1.5"
+                    >
+                      <CheckCircle2 className="size-3.5" />
+                      <span>Review Check-in</span>
+                    </Button>
+                  </div>
                 </div>
               </div>
-
-              {/* Action buttons on row */}
-              <div className="flex flex-col gap-1.5 shrink-0">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleOpenCheckInFor(primary, isPlannedDone ? "done" : "mvd_only")}
-                  className="h-8 text-xs px-2.5 gap-1.5"
-                >
-                  <CheckCircle2 className="size-3.5" />
-                  <span>Check In</span>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleStartSession}
-                  className="h-8 text-xs px-2.5 text-muted-foreground hover:text-foreground"
-                >
-                  Launch
-                </Button>
-              </div>
-            </div>
+            )}
           </div>
-        )}
-
-        {/* Review Block Task Row (Prompt Requirement 1) */}
-        {review && (
-          <div className="rounded-xl border border-border/80 bg-card p-4 transition-all space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-1 flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-surface border border-border/60 text-warning font-semibold">
-                    Spaced Review
-                  </span>
-                  {review.status === "done" && (
-                    <span className="text-[10px] font-mono text-success flex items-center gap-0.5 font-medium">
-                      <CheckCircle2 className="size-3" /> Done
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-sm sm:text-base font-semibold text-foreground tracking-tight truncate">
-                    {review.skill_name}
-                  </h3>
-                  <EvidenceBadge level={(review.evidence_level as any) || 0} />
-                </div>
-
-                <span className="text-xs font-mono text-muted-foreground flex items-center gap-1">
-                  <Clock className="size-3" />
-                  Planned: {review.planned_minutes} min
+        </>
+      ) : (
+        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 space-y-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Badge variant="brand" className="text-[11px] font-mono gap-1">
+                  <Sparkles className="size-3" />
+                  Rest Day · On Track
+                </Badge>
+                <span className="text-xs text-muted-foreground font-mono">
+                  {data.date}
                 </span>
               </div>
-
-              <div className="flex flex-col gap-1.5 shrink-0">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleOpenCheckInFor(review, "done")}
-                  className="h-8 text-xs px-2.5 gap-1.5"
-                >
-                  <CheckCircle2 className="size-3.5" />
-                  <span>Review Check-in</span>
-                </Button>
-              </div>
+              <h3 className="text-lg font-bold text-foreground pt-1">
+                No Study Session Scheduled Today
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-lg">
+                Your learning plan for <strong className="text-foreground">{data.goal?.title}</strong> is active. Today has no mandatory session scheduled, preserving your habit momentum and consistency.
+              </p>
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Upcoming sessions preview */}
+          {data.upcoming_items && data.upcoming_items.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-border/60">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
+                  <Calendar className="size-3.5 text-primary" />
+                  <span>Next Scheduled Sessions</span>
+                </span>
+                <Link href="/plan" className="text-xs text-primary hover:underline">
+                  View full schedule →
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {data.upcoming_items.slice(0, 4).map((it) => (
+                  <div
+                    key={it.id}
+                    className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-background/50 hover:bg-background/80 transition-colors"
+                  >
+                    <div className="flex flex-col min-w-0 pr-2">
+                      <span className="text-xs font-semibold text-foreground truncate">
+                        {it.skill_name || "Study Session"}
+                      </span>
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono mt-0.5">
+                        <span className="capitalize">{it.kind}</span>
+                        <span>·</span>
+                        <span>{it.planned_minutes} min</span>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] font-mono shrink-0">
+                      {it.scheduled_date}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Quick study actions during rest day */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-border/60">
+            <Link href="/plan" className="w-full">
+              <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 h-9">
+                <Layers className="size-3.5 text-primary" />
+                <span>Full Plan</span>
+              </Button>
+            </Link>
+            <Link href="/quizzes" className="w-full">
+              <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 h-9">
+                <CheckCircle2 className="size-3.5 text-emerald-500" />
+                <span>Quizzes</span>
+              </Button>
+            </Link>
+            <Link href="/ask" className="w-full">
+              <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 h-9">
+                <Sparkles className="size-3.5 text-purple-400" />
+                <span>AI Tutor</span>
+              </Button>
+            </Link>
+            <Link href="/review" className="w-full">
+              <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 h-9">
+                <RotateCw className="size-3.5 text-blue-400" />
+                <span>Review</span>
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* 6. Network-dependent actions note (PRD Section 10: "Actions that need the network are disabled with a reason, not hidden") */}
       <div className="rounded-xl border border-border/50 bg-surface/30 p-4 space-y-2 text-xs">

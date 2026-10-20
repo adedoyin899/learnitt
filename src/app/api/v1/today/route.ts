@@ -151,6 +151,43 @@ export async function GET(req: NextRequest) {
       .eq("owner_id", user.id)
       .eq("goal_id", activeGoal.id);
 
+    // Fetch upcoming items
+    const { data: upcomingData } = await supabase
+      .from("plan_items")
+      .select("id, scheduled_date, kind, planned_minutes, skill_id")
+      .eq("owner_id", user.id)
+      .eq("goal_id", activeGoal.id)
+      .gt("scheduled_date", todayStr)
+      .order("scheduled_date", { ascending: true })
+      .limit(10);
+
+    const upcomingSkillIds = (upcomingData || [])
+      .map((u) => u.skill_id)
+      .filter(Boolean) as string[];
+    const { data: upcomingSkills } = upcomingSkillIds.length > 0
+      ? await supabase.from("skills").select("id, name").in("id", upcomingSkillIds)
+      : { data: [] };
+    const upSkillMap = new Map((upcomingSkills || []).map((s) => [s.id, s.name]));
+
+    const mappedUpcoming = (upcomingData || []).map((u) => ({
+      id: u.id,
+      scheduled_date: u.scheduled_date,
+      kind: u.kind,
+      planned_minutes: u.planned_minutes,
+      skill_name: u.skill_id ? upSkillMap.get(u.skill_id) : "Learning Session",
+    }));
+
+    const { count: totalSkills } = await supabase
+      .from("skills")
+      .select("id", { count: "exact", head: true })
+      .eq("goal_id", activeGoal.id);
+
+    const { count: verifiedSkills } = await supabase
+      .from("skills")
+      .select("id", { count: "exact", head: true })
+      .eq("goal_id", activeGoal.id)
+      .eq("status", "verified");
+
     return NextResponse.json({
       has_goal: true,
       has_plan: (planCount || 0) > 0,
@@ -161,6 +198,11 @@ export async function GET(req: NextRequest) {
       is_planned_complete: false,
       total_planned_minutes_today: 0,
       total_completed_minutes_today: 0,
+      stats: {
+        total_skills: totalSkills || 0,
+        verified_skills: verifiedSkills || 0,
+      },
+      upcoming_items: mappedUpcoming,
     } satisfies TodayResponse);
   }
 
