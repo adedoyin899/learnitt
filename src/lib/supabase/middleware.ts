@@ -101,11 +101,13 @@ export async function updateSession(request: NextRequest) {
     pathname.endsWith(".png") ||
     pathname.endsWith(".svg");
 
+  const isApiRoute = pathname.startsWith("/api");
+
   const hasAuthCookie = request.cookies
     .getAll()
     .some((c) => c.name.includes("auth-token") || c.name === "sb-mock-auth");
 
-  if (!user && !hasAuthCookie && !isAuthRoute && !isPublicAsset) {
+  if (!user && !hasAuthCookie && !isAuthRoute && !isPublicAsset && !isApiRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
