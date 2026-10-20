@@ -237,7 +237,7 @@ function PlanPageInner() {
                   <select
                     value={selectedGoalId}
                     onChange={(e) => setSelectedGoalId(e.target.value)}
-                    className="bg-card border border-border rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+                    className="bg-card border border-border rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-medium max-w-[160px] sm:max-w-[260px] truncate"
                   >
                     {goals.map((g) => (
                       <option key={g.id} value={g.id}>

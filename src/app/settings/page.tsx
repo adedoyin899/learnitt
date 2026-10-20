@@ -370,11 +370,11 @@ function SettingsPageInner() {
             className="w-full space-y-6 mt-2"
             data-testid="settings-tabs"
           >
-            {/* 5-Column Responsive Tab Navigation */}
-            <TabsList className="grid w-full grid-cols-5 h-11 p-1 bg-muted/40">
+            {/* 5-Column Responsive Tab Navigation (Horizontal Scroll on Mobile, Grid on Tablet+) */}
+            <TabsList className="flex w-full overflow-x-auto scrollbar-none gap-1 p-1 bg-muted/40 rounded-xl sm:grid sm:grid-cols-5 h-auto sm:h-11">
               <TabsTrigger
                 value="reminders"
-                className="text-xs gap-1.5"
+                className="text-xs gap-1.5 min-w-[90px] sm:min-w-0 py-2 sm:py-1.5 shrink-0 sm:shrink"
                 data-testid="tab-trigger-reminders"
               >
                 <Bell className="h-3.5 w-3.5" />
@@ -382,7 +382,7 @@ function SettingsPageInner() {
               </TabsTrigger>
               <TabsTrigger
                 value="goals"
-                className="text-xs gap-1.5"
+                className="text-xs gap-1.5 min-w-[85px] sm:min-w-0 py-2 sm:py-1.5 shrink-0 sm:shrink"
                 data-testid="tab-trigger-goals"
               >
                 <Target className="h-3.5 w-3.5" />
@@ -390,7 +390,7 @@ function SettingsPageInner() {
               </TabsTrigger>
               <TabsTrigger
                 value="appearance"
-                className="text-xs gap-1.5"
+                className="text-xs gap-1.5 min-w-[75px] sm:min-w-0 py-2 sm:py-1.5 shrink-0 sm:shrink"
                 data-testid="tab-trigger-appearance"
               >
                 <Palette className="h-3.5 w-3.5" />
@@ -398,7 +398,7 @@ function SettingsPageInner() {
               </TabsTrigger>
               <TabsTrigger
                 value="review"
-                className="text-xs gap-1.5"
+                className="text-xs gap-1.5 min-w-[85px] sm:min-w-0 py-2 sm:py-1.5 shrink-0 sm:shrink"
                 data-testid="tab-trigger-review"
               >
                 <Calendar className="h-3.5 w-3.5" />
@@ -406,11 +406,11 @@ function SettingsPageInner() {
               </TabsTrigger>
               <TabsTrigger
                 value="account"
-                className="text-xs gap-1.5"
+                className="text-xs gap-1.5 min-w-[85px] sm:min-w-0 py-2 sm:py-1.5 shrink-0 sm:shrink"
                 data-testid="tab-trigger-account"
               >
                 <Shield className="h-3.5 w-3.5" />
-                Data & AI
+                Data &amp; AI
               </TabsTrigger>
             </TabsList>
 
@@ -864,7 +864,7 @@ function SettingsPageInner() {
 
       {/* Modal: Edit Goal Parameters */}
       <Dialog open={Boolean(editingGoal)} onOpenChange={(open) => !open && setEditingGoal(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[88vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base flex items-center gap-2">
               <Pencil className="size-4 text-primary" />

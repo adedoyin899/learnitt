@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { AppNavigation } from "@/components/navigation/app-navigation";
+import { ProductTourModal } from "@/components/onboarding/product-tour-modal";
 import "./globals.css";
 
 const inter = Inter({
@@ -53,7 +54,8 @@ export default function RootLayout({
       <body className="min-h-screen bg-background text-foreground antialiased selection:bg-primary/20 selection:text-foreground flex flex-col">
         <Providers>
           <AppNavigation />
-          <div className="flex-1 flex flex-col w-full pb-16 md:pb-0">
+          <ProductTourModal />
+          <div className="flex-1 flex flex-col w-full pb-24 md:pb-8">
             {children}
           </div>
         </Providers>

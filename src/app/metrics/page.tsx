@@ -22,42 +22,45 @@ import {
   Copy,
   ChevronRight,
 } from "lucide-react";
+import { StateCard } from "@/components/ui/state-card";
 import { toast } from "sonner";
 
 export default function MetricsPage() {
   const [metrics, setMetrics] = React.useState<PilotMetrics | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [errorStatus, setErrorStatus] = React.useState<number | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [copied, setCopied] = React.useState(false);
 
-  React.useEffect(() => {
-    let mounted = true;
-    async function fetchMetrics() {
-      try {
-        setLoading(true);
-        const res = await fetch("/api/v1/metrics");
-        if (!res.ok) {
-          throw new Error("Failed to load pilot metrics");
-        }
-        const data = await res.json();
-        if (mounted && data.metrics) {
-          setMetrics(data.metrics);
-        }
-      } catch (err: unknown) {
-        if (mounted) {
-          setError((err as Error).message || "Error loading metrics");
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+  const fetchMetrics = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      setErrorStatus(null);
+      setError(null);
+      const res = await fetch("/api/v1/metrics");
+      if (res.status === 401) {
+        setErrorStatus(401);
+        return;
       }
+      if (!res.ok) {
+        throw new Error("Failed to load pilot metrics");
+      }
+      const data = await res.json();
+      if (data.metrics) {
+        setMetrics(data.metrics);
+      } else {
+        throw new Error("Invalid metrics format");
+      }
+    } catch (err: unknown) {
+      setError((err as Error).message || "Error loading metrics");
+    } finally {
+      setLoading(false);
     }
-    fetchMetrics();
-    return () => {
-      mounted = false;
-    };
   }, []);
+
+  React.useEffect(() => {
+    fetchMetrics();
+  }, [fetchMetrics]);
 
   const handleDownloadReview = async () => {
     try {
@@ -108,99 +111,63 @@ export default function MetricsPage() {
     );
   }
 
+  if (errorStatus === 401) {
+    return (
+      <StateCard
+        type="unauthorized"
+        title="Sign In for Pilot Metrics"
+        description="PRD Section 18 pilot analytics, MVD completion rates, and AI cost tracking require authentication."
+        actionText="Sign In"
+        actionHref="/login?redirect=/metrics"
+        secondaryText="Return to Today"
+        secondaryHref="/today"
+      />
+    );
+  }
+
   if (error || !metrics) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
-        <Card className="max-w-md w-full border-destructive/40 bg-card">
-          <CardHeader>
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-5 w-5" />
-              <CardTitle className="text-base font-semibold">Metrics Unavailable</CardTitle>
-            </div>
-            <CardDescription className="text-xs">
-              {error || "Unable to retrieve operator pilot metrics."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <Link href="/today">
-              <Button size="sm" variant="outline" className="w-full text-xs">
-                Return to Today
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+      <StateCard
+        type="error"
+        title="Metrics Unavailable"
+        description={error || "Unable to retrieve operator pilot metrics."}
+        actionText="Try Again"
+        onRetry={fetchMetrics}
+        secondaryText="Return to Today"
+        secondaryHref="/today"
+      />
     );
   }
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-primary/20 pb-20">
-      {/* Top Header */}
-      <header className="sticky top-0 z-40 border-b border-border bg-card/70 backdrop-blur-md px-4 py-2.5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/today" className="flex items-center gap-2">
-            <div className="size-6 rounded bg-primary flex items-center justify-center text-primary-foreground font-mono text-xs font-bold">
-              L
-            </div>
-            <span className="font-mono text-sm tracking-wider uppercase font-semibold">
-              Learnitt
-            </span>
-          </Link>
-          <div className="hidden sm:flex items-center gap-1 border-l border-border pl-3">
-            <Link
-              href="/today"
-              className="px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Today
-            </Link>
-            <Link
-              href="/plan"
-              className="px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Plan
-            </Link>
-            <Link
-              href="/progress"
-              className="px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Progress
-            </Link>
-            <Link
-              href="/settings"
-              className="px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Settings
-            </Link>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs font-mono border-primary/40 text-primary">
-            PILOT OPERATOR
-          </Badge>
-          <Button
-            size="sm"
-            variant="default"
-            onClick={handleDownloadReview}
-            className="h-8 text-xs gap-1.5 touch-target-44"
-            data-testid="download-monthly-review-btn"
-          >
-            <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Monthly Review</span> (.md)
-          </Button>
-        </div>
-      </header>
-
       {/* Main Container */}
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-8 space-y-8">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 space-y-8">
         {/* Title and Header Banner */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono uppercase tracking-wider">
-            <span>Phase L13</span>
-            <ChevronRight className="h-3 w-3" />
-            <span>PRD Section 18</span>
-            <ChevronRight className="h-3 w-3" />
-            <span className="text-primary font-semibold">Pilot Metrics</span>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono uppercase tracking-wider">
+              <span>Phase L13</span>
+              <ChevronRight className="h-3 w-3" />
+              <span>PRD Section 18</span>
+              <ChevronRight className="h-3 w-3" />
+              <span className="text-primary font-semibold">Pilot Metrics</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs font-mono border-primary/40 text-primary">
+                PILOT OPERATOR
+              </Badge>
+              <Button
+                size="sm"
+                variant="default"
+                onClick={handleDownloadReview}
+                className="h-8 text-xs gap-1.5"
+                data-testid="download-monthly-review-btn"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Monthly Review</span> (.md)
+              </Button>
+            </div>
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>

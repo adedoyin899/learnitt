@@ -456,7 +456,7 @@ export function TodayClient({ initialData }: TodayClientProps) {
                 variant="outline"
                 disabled={isActivatingGoal}
                 onClick={() => handleActivateGoal(data.goal!.id)}
-                className="h-7 text-xs border-amber-500/30 text-amber-600 dark:text-amber-300 hover:bg-amber-500/20 shrink-0 self-end sm:self-auto"
+                className="h-8 text-xs border-amber-500/30 text-amber-600 dark:text-amber-300 hover:bg-amber-500/20 shrink-0 w-full sm:w-auto font-medium"
               >
                 {isActivatingGoal ? "Activating..." : "Set as Primary"}
               </Button>

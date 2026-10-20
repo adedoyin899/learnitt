@@ -19,10 +19,12 @@ import {
   X,
   WifiOff,
   Target,
+  HelpCircle,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { openProductTour } from "@/components/onboarding/product-tour-modal";
 
 interface NavItem {
   label: string;
@@ -41,11 +43,18 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
     match: (path: string) => path === "/today" || path === "/",
   },
   {
+    label: "Goals",
+    href: "/goals",
+    icon: Target,
+    description: "Curriculum tracks & competency graphs",
+    match: (path: string) => path.startsWith("/goals"),
+  },
+  {
     label: "Plan",
     href: "/plan",
     icon: Layers,
     description: "Adaptive schedule & milestones",
-    match: (path: string) => path.startsWith("/plan") || path.startsWith("/goals"),
+    match: (path: string) => path.startsWith("/plan"),
   },
   {
     label: "Progress",
@@ -212,6 +221,19 @@ export function AppNavigation() {
 
           {/* Right Actions: Settings, ThemeToggle, SignOut, Mobile Menu Button */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            {/* Product Tour Button */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={openProductTour}
+              className="hidden md:flex items-center gap-1.5 px-2 py-1.5 h-8 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/70"
+              aria-label="Start product tour"
+            >
+              <HelpCircle className="size-3.5 text-primary" />
+              <span className="hidden xl:inline">Tour</span>
+            </Button>
+
             {/* Desktop Settings Link */}
             <Link
               href="/settings"
@@ -394,22 +416,25 @@ export function AppNavigation() {
                 );
               })}
 
-              {/* Goals & Plans link */}
-              <Link
-                href="/settings?tab=goals"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              {/* Product Tour link */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  openProductTour();
+                }}
+                className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/50 w-full text-left"
               >
-                <div className="p-1.5 rounded-lg bg-muted text-muted-foreground">
-                  <Target className="size-4" />
+                <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                  <HelpCircle className="size-4" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-sm font-medium text-foreground">Goals &amp; Plans</span>
+                  <span className="text-sm font-medium text-foreground">Product Tour &amp; Guide</span>
                   <span className="text-[11px] text-muted-foreground">
-                    Switch active plan, edit goals, or add new
+                    Interactive walkthrough of how Learnitt works
                   </span>
                 </div>
-              </Link>
+              </button>
 
               {/* Settings link */}
               <Link
