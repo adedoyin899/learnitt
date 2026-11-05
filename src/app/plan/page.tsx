@@ -128,6 +128,19 @@ function PlanPageInner() {
   }, [loadGoals]);
 
   React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onGoalChanged = (e: Event) => {
+      const detail = (e as CustomEvent<{ goalId?: string }>).detail;
+      if (detail?.goalId) {
+        setSelectedGoalId(detail.goalId);
+      }
+      void loadGoals();
+    };
+    window.addEventListener("learnitt:goal-changed", onGoalChanged);
+    return () => window.removeEventListener("learnitt:goal-changed", onGoalChanged);
+  }, [loadGoals]);
+
+  React.useEffect(() => {
     if (selectedGoalId) {
       loadPlan(selectedGoalId);
     }

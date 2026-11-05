@@ -879,6 +879,189 @@ export class MockAIProvider implements AIProvider {
         }
 
         const validChunkId = chunkIds[0] || "chunk_sql_01";
+        const skillMatch = prompt.match(/Skill:\s*([^\n\r(]+)(?:\s*\(id:\s*([^)]+)\))?/i);
+        const skillName = skillMatch ? skillMatch[1].trim() : "SQL & Relational Modeling";
+        const skillId = skillMatch?.[2]?.trim() || "sk_02";
+        const skillLower = skillName.toLowerCase();
+
+        const isSqlSkill =
+          /\b(sql|relational|join|warehouse|star schema|spark|airflow|dbt|kafka|pandas|polars|parquet|iceberg|ingestion|data quality|pipeline)\b/i.test(
+            skillLower
+          ) || !skillMatch;
+
+        if (!isSqlSkill) {
+          const isMusicSkill =
+            /\b(piano|keyboard|clef|staff|notation|rhythm|metronome|scale|triad|chord|inversion|harmony|pedal|arpeggio|sight-reading|ear training|repertoire|hand)\b/i.test(
+              skillLower
+            );
+          const isArtSkill =
+            /\b(color|paint|draw|sketch|chiaroscuro|perspective|anatomy|brush|glazing|composition|canvas|portfolio)\b/i.test(
+              skillLower
+            );
+
+          if (isMusicSkill) {
+            return {
+              questions: [
+                {
+                  id: `q_mus_mc_${skillId}`,
+                  type: "recall_mc",
+                  prompt: `In "${skillName}", what is the primary technical focus for building clean, tension-free execution at the keyboard?`,
+                  options: [
+                    "Maintaining relaxed wrist alignment, curved fingers, and a steady rhythmic pulse",
+                    "Locking the wrists and pressing keys with flat fingers for maximum volume",
+                    "Playing as fast as possible before learning the note patterns",
+                    "Holding the sustain pedal down continuously across all harmonic changes",
+                  ],
+                  answer_key: 0,
+                  rubric: null,
+                  source_chunk_ids: [validChunkId],
+                  skill_id: skillId,
+                },
+                {
+                  id: `q_mus_tf_${skillId}`,
+                  type: "recall_tf",
+                  prompt: `True or False: Slow, deliberate practice with a metronome and hands-separate preparation accelerates long-term accuracy in "${skillName}".`,
+                  options: ["True", "False"],
+                  answer_key: "True",
+                  rubric: null,
+                  source_chunk_ids: [validChunkId],
+                  skill_id: skillId,
+                },
+                {
+                  id: `q_mus_applied_${skillId}`,
+                  type: "applied",
+                  prompt: `Describe your step-by-step practice routine for mastering "${skillName}" in a 15-minute daily session, including how you check for rhythmic evenness and physical relaxation.`,
+                  options: null,
+                  answer_key: null,
+                  rubric: [
+                    {
+                      criterion: "Technical Accuracy & Hand Mechanics",
+                      weight: 40,
+                      description: `Identifies the core physical and musical mechanics required for ${skillName}.`,
+                    },
+                    {
+                      criterion: "Rhythmic Control & Tempo Progression",
+                      weight: 30,
+                      description: "Explains how to use slow tempo, counting, or a metronome before increasing speed.",
+                    },
+                    {
+                      criterion: "Focused 15-Minute Practice Structure",
+                      weight: 30,
+                      description: "Outlines a concrete, repeatable practice drill that isolates difficult measures.",
+                    },
+                  ],
+                  source_chunk_ids: [validChunkId],
+                  skill_id: skillId,
+                },
+              ],
+            };
+          }
+
+          if (isArtSkill) {
+            return {
+              questions: [
+                {
+                  id: `q_art_mc_${skillId}`,
+                  type: "recall_mc",
+                  prompt: `When practicing "${skillName}", which foundational principle most strongly governs visual clarity and structure?`,
+                  options: [
+                    "Establishing accurate value relationships and big shapes before adding surface detail",
+                    "Starting immediately with tiny highlights before blocking in the composition",
+                    "Using pure unmixed black for every shadow regardless of lighting",
+                    "Skipping proportion checks during the initial block-in stage",
+                  ],
+                  answer_key: 0,
+                  rubric: null,
+                  source_chunk_ids: [validChunkId],
+                  skill_id: skillId,
+                },
+                {
+                  id: `q_art_applied_${skillId}`,
+                  type: "applied",
+                  prompt: `Explain how you would set up and execute a 20-minute study focused on "${skillName}", including how you evaluate proportions, values, or color harmony.`,
+                  options: null,
+                  answer_key: null,
+                  rubric: [
+                    {
+                      criterion: "Structural & Visual Foundation",
+                      weight: 40,
+                      description: `Demonstrates clear understanding of the core principles of ${skillName}.`,
+                    },
+                    {
+                      criterion: "Value, Proportion, or Color Control",
+                      weight: 30,
+                      description: "Explains how to verify light/shadow hierarchy or spatial relationships.",
+                    },
+                    {
+                      criterion: "Practical Studio Workflow",
+                      weight: 30,
+                      description: "Describes a progression from broad block-in to refined edges.",
+                    },
+                  ],
+                  source_chunk_ids: [validChunkId],
+                  skill_id: skillId,
+                },
+              ],
+            };
+          }
+
+          // Dynamic questions for ANY arbitrary skill or subject
+          return {
+            questions: [
+              {
+                id: `q_dyn_mc_${skillId}`,
+                type: "recall_mc",
+                prompt: `Which approach best demonstrates mastery of the core concepts in "${skillName}"?`,
+                options: [
+                  `Applying the foundational principles of ${skillName} systematically and verifying outcomes against clear criteria`,
+                  "Memorizing isolated terms without practicing real-world application",
+                  "Skipping foundational prerequisites and jumping straight to edge cases",
+                  "Relying on guesswork without reviewing feedback or reference guides",
+                ],
+                answer_key: 0,
+                rubric: null,
+                source_chunk_ids: [validChunkId],
+                skill_id: skillId,
+              },
+              {
+                id: `q_dyn_tf_${skillId}`,
+                type: "recall_tf",
+                prompt: `True or False: Breaking "${skillName}" into deliberate, verifiable practice steps improves long-term retention and transfer.`,
+                options: ["True", "False"],
+                answer_key: "True",
+                rubric: null,
+                source_chunk_ids: [validChunkId],
+                skill_id: skillId,
+              },
+              {
+                id: `q_dyn_applied_${skillId}`,
+                type: "applied",
+                prompt: `Walk through a concrete practical scenario where you apply "${skillName}". What are the key steps, common pitfalls to avoid, and how do you verify your result?`,
+                options: null,
+                answer_key: null,
+                rubric: [
+                  {
+                    criterion: `Core Principles of ${skillName}`,
+                    weight: 40,
+                    description: `Accurately explains the primary concepts and mechanics of ${skillName}.`,
+                  },
+                  {
+                    criterion: "Practical Application & Execution",
+                    weight: 30,
+                    description: "Provides a concrete, realistic walkthrough or example scenario.",
+                  },
+                  {
+                    criterion: "Verification & Pitfall Awareness",
+                    weight: 30,
+                    description: "Identifies common mistakes and how to validate quality.",
+                  },
+                ],
+                source_chunk_ids: [validChunkId],
+                skill_id: skillId,
+              },
+            ],
+          };
+        }
 
         return {
           questions: [
@@ -890,7 +1073,7 @@ export class MockAIProvider implements AIProvider {
               answer_key: 0,
               rubric: null,
               source_chunk_ids: [validChunkId],
-              skill_id: "sk_02",
+              skill_id: skillId,
             },
             {
               id: "q_sql_applied_01",
@@ -916,7 +1099,7 @@ export class MockAIProvider implements AIProvider {
                 },
               ],
               source_chunk_ids: [validChunkId],
-              skill_id: "sk_02",
+              skill_id: skillId,
             },
           ],
         };
@@ -927,35 +1110,58 @@ export class MockAIProvider implements AIProvider {
           prompt.includes("low_confidence") || prompt.includes("low confidence");
         const isFail = prompt.includes("fail_grade");
 
+        let parsedRubric: Array<{ criterion: string; weight: number; description: string }> | null = null;
+        try {
+          const rubricMatch = prompt.match(/Rubric:\s*(\[\s*\{[\s\S]*?\}\s*\])/);
+          if (rubricMatch) {
+            const arr = JSON.parse(rubricMatch[1]);
+            if (Array.isArray(arr) && arr.length > 0 && arr[0].criterion) {
+              parsedRubric = arr;
+            }
+          }
+        } catch {
+          // fallback to default rubric
+        }
+
+        const activeRubric = parsedRubric || [
+          {
+            criterion: "Explains INNER JOIN behavior",
+            weight: 40,
+            description: "Notes that only matching rows from both tables are retained.",
+          },
+          {
+            criterion: "Explains LEFT JOIN behavior",
+            weight: 30,
+            description: "Notes all left-table rows are preserved with NULLs for unmatched right.",
+          },
+          {
+            criterion: "Contrasts analytical use cases",
+            weight: 30,
+            description: "Provides realistic examples contrasting data loss vs NULL preservation.",
+          },
+        ];
+
         return {
-          criterion_scores: [
-            {
-              criterion: "Explains INNER JOIN behavior",
-              score: isFail ? 0 : 2,
-              max_score: 2,
-              feedback: isFail ? "Missing core explanation." : "Accurate description of inner join semantics.",
-            },
-            {
-              criterion: "Explains LEFT JOIN behavior",
-              score: isFail ? 1 : 2,
-              max_score: 2,
-              feedback: "Correctly mentions NULL preservation for unmatched rows.",
-            },
-            {
-              criterion: "Contrasts analytical use cases",
-              score: isFail ? 0 : 1,
-              max_score: 2,
-              feedback: "Adequate contrast with real-world examples.",
-            },
-          ],
+          criterion_scores: activeRubric.map((r, idx) => ({
+            criterion: r.criterion,
+            score: isFail ? (idx === 1 ? 1 : 0) : idx === activeRubric.length - 1 ? 1 : 2,
+            max_score: 2,
+            feedback: isFail
+              ? `Needs deeper coverage of ${r.criterion.toLowerCase()}.`
+              : `Demonstrates solid grasp of ${r.criterion.toLowerCase()}.`,
+          })),
           total: isFail ? 40 : 85,
           verdict: isFail ? "fail" : "pass",
           feedback: {
             summary: isFail
-              ? "Explanation falls short of standard analytical accuracy."
-              : "Clear explanation that covers the core distinction accurately.",
-            strengths: ["Properly identified NULL handling in outer joins."],
-            improvements: ["Could mention performance implications with large outer tables."],
+              ? "Your response needs more specific detail across the rubric criteria."
+              : "Clear, well-structured explanation that addresses the core criteria effectively.",
+            strengths: [
+              `Good foundational understanding of ${activeRubric[0]?.criterion || "core concepts"}.`,
+            ],
+            improvements: [
+              `Expand with a concrete step-by-step example for ${activeRubric[activeRubric.length - 1]?.criterion || "applied edge cases"}.`,
+            ],
           },
           confidence: isLowConfidence ? 0.45 : 0.95,
         };
@@ -982,13 +1188,26 @@ export class MockAIProvider implements AIProvider {
 
         if (isGeneral) {
           const questionMatch = prompt.match(/Learner Question:\s*([^\n]+)/i);
+          const skillCtxMatch = prompt.match(/Skill Context:\s*([^\n]+)/i);
           const qText = questionMatch ? questionMatch[1].trim() : "";
-          const coreConcept = qText
-            ? `Regarding "${qText}": this involves core domain architecture and best practices. In database and software engineering systems, optimizing query execution plans, understanding indexing algorithms, and reducing round-trips are primary objectives.`
-            : "This concept is governed by standard domain principles, architectural separation of concerns, and system optimization patterns.";
+          const skillCtx = skillCtxMatch ? skillCtxMatch[1].trim() : "General";
+          const combinedLower = `${qText} ${skillCtx}`.toLowerCase();
+
+          let domainExplanation = "";
+          if (/\b(piano|music|chord|scale|clef|rhythm|pedal|arpeggio|note|octave|tempo|key)\b/i.test(combinedLower)) {
+            domainExplanation = `Regarding "${qText}" (${skillCtx}): In piano and music theory, start by establishing relaxed hand alignment and identifying the underlying key signature and rhythmic pulse. Practice the pattern hands separately at a slow, steady tempo (60-72 BPM) before combining hands, listening closely for even tone, clean voice leading between chords, and precise damper pedal changes.`;
+          } else if (/\b(art|paint|draw|color|sketch|value|brush|perspective|canvas)\b/i.test(combinedLower)) {
+            domainExplanation = `Regarding "${qText}" (${skillCtx}): In visual arts and painting, always establish big spatial proportions and a clear 3-value hierarchy (light, midtone, shadow) before rendering fine details or secondary color glazes. Squinting at your reference helps simplify complex forms into cohesive value shapes.`;
+          } else if (/\b(health|clinical|biostatistics|regression|survival|trial|p-value)\b/i.test(combinedLower)) {
+            domainExplanation = `Regarding "${qText}" (${skillCtx}): In biostatistics and clinical research, ensure you distinguish between sample point estimates and population parameters using confidence intervals, verify model assumptions (such as proportional hazards or linearity of log-odds), and account for potential confounders.`;
+          } else if (qText) {
+            domainExplanation = `Regarding "${qText}"${skillCtx !== "General" ? ` in the context of ${skillCtx}` : ""}: Focus first on the core mental model and foundational rules, then break the skill into a repeatable 15-minute deliberate practice drill. Verify your understanding by testing edge cases and applying the concept to a concrete example.`;
+          } else {
+            domainExplanation = "This concept is governed by foundational domain principles, structured deliberate practice, and active recall verification.";
+          }
 
           return {
-            answer: `General knowledge: ${coreConcept} Note: This explanation is based on general domain knowledge rather than your uploaded materials.`,
+            answer: `General knowledge: ${domainExplanation} Note: This explanation is based on general domain knowledge rather than your uploaded materials.`,
             cited_chunk_ids: [],
             general_knowledge: true,
           };
@@ -1006,6 +1225,30 @@ export class MockAIProvider implements AIProvider {
         const isSimpler = prompt.toLowerCase().includes("simpler") || prompt.toLowerCase().includes("eli5");
         const isTechnical = prompt.toLowerCase().includes("more_technical") || prompt.toLowerCase().includes("technical");
         const isExample = prompt.toLowerCase().includes("with_example") || prompt.toLowerCase().includes("example");
+        const priorMatch = prompt.match(/Prior Explanation:\s*([\s\S]+)$/i);
+        const priorText = priorMatch ? priorMatch[1].trim() : "";
+        const isSqlPrior = /\b(where|having|sql|select|join)\b/i.test(priorText) || !priorText;
+
+        if (!isSqlPrior) {
+          if (isSimpler) {
+            return {
+              explanation:
+                "In simple terms: master the slow, basic building blocks first so your brain and muscle memory can handle the full pattern effortlessly without tension.",
+            };
+          }
+          if (isTechnical) {
+            return {
+              explanation:
+                "From a technical standpoint, isolating sub-skills reduces cognitive load in working memory, allowing myelination of motor/conceptual pathways before integrating multi-variable coordination.",
+            };
+          }
+          if (isExample) {
+            return {
+              explanation:
+                "Concrete example: Spend 5 minutes on isolated fundamentals at 60% speed, 5 minutes connecting two transitions, and 5 minutes applying the pattern in context without stopping.",
+            };
+          }
+        }
 
         if (isSimpler) {
           return {

@@ -66,6 +66,15 @@ export default function JournalPage() {
     loadJournal();
   }, [loadJournal]);
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onGoalChanged = () => {
+      void loadJournal();
+    };
+    window.addEventListener("learnitt:goal-changed", onGoalChanged);
+    return () => window.removeEventListener("learnitt:goal-changed", onGoalChanged);
+  }, [loadJournal]);
+
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-4 pt-6">

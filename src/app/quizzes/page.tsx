@@ -37,28 +37,33 @@ import {
 import { toast } from "sonner";
 import { QuizListItem, AvailableSkillItem } from "@/app/api/v1/quizzes/route";
 
+interface GoalSummaryItem {
+  id: string;
+  title: string;
+  domain: string;
+  status: string;
+}
+
 export default function QuizzesPage() {
   const router = useRouter();
   const [loading, setLoading] = React.useState(true);
   const [errorStatus, setErrorStatus] = React.useState<number | null>(null);
+  const [goals, setGoals] = React.useState<GoalSummaryItem[]>([]);
+  const [selectedGoalId, setSelectedGoalId] = React.useState<string>("all");
   const [quizzes, setQuizzes] = React.useState<QuizListItem[]>([]);
   const [availableSkills, setAvailableSkills] = React.useState<AvailableSkillItem[]>([]);
-  const [stats, setStats] = React.useState({
-    total_quizzes: 0,
-    passed_quizzes: 0,
-    pass_rate_percent: 0,
-  });
 
   // Filter & search states
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<"all" | "passed" | "needs_review" | "in_progress">("all");
 
-  // Generate quiz modal
+  // Generate quiz modal & inline generation
   const [isGenerateOpen, setIsGenerateOpen] = React.useState(false);
   const [selectedSkillId, setSelectedSkillId] = React.useState<string>("");
   const [isGenerating, setIsGenerating] = React.useState(false);
+  const [inlineGeneratingSkillId, setInlineGeneratingSkillId] = React.useState<string | null>(null);
 
-  const fetchQuizzes = React.useCallback(async () => {
+  const fetchQuizzes = React.useCallback(async (forceGoalId?: string) => {
     try {
       setLoading(true);
       setErrorStatus(null);
@@ -71,35 +76,81 @@ export default function QuizzesPage() {
         throw new Error("Failed to load quizzes");
       }
       const data = await res.json();
+      const loadedGoals: GoalSummaryItem[] = data.goals || [];
+      const loadedSkills: AvailableSkillItem[] = data.available_skills || [];
+      setGoals(loadedGoals);
       setQuizzes(data.quizzes || []);
-      setAvailableSkills(data.available_skills || []);
-      if (data.stats) {
-        setStats(data.stats);
-      }
-      if (data.available_skills && data.available_skills.length > 0 && !selectedSkillId) {
-        setSelectedSkillId(data.available_skills[0].id);
+      setAvailableSkills(loadedSkills);
+
+      const defaultGoal =
+        forceGoalId ||
+        data.active_goal_id ||
+        loadedGoals.find((g) => g.status === "active")?.id ||
+        loadedGoals[0]?.id ||
+        "all";
+
+      setSelectedGoalId((prev) => {
+        if (forceGoalId) return forceGoalId;
+        if (prev !== "all" && loadedGoals.some((g) => g.id === prev)) return prev;
+        return defaultGoal;
+      });
+
+      const targetGoalId = forceGoalId || defaultGoal;
+      const goalSkills =
+        targetGoalId === "all"
+          ? loadedSkills
+          : loadedSkills.filter((s) => s.goal_id === targetGoalId);
+      const firstSkill = goalSkills[0] || loadedSkills[0];
+      if (firstSkill) {
+        setSelectedSkillId(firstSkill.id);
       }
     } catch {
       toast.error("Unable to load quizzes. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [selectedSkillId]);
+  }, []);
 
   React.useEffect(() => {
-    fetchQuizzes();
+    void fetchQuizzes();
   }, [fetchQuizzes]);
 
-  // Handle on-demand quiz generation for selected skill
-  const handleGenerateQuiz = async () => {
-    if (!selectedSkillId) {
+  // Listen to global goal switch events from top navigation
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onGoalChanged = (e: Event) => {
+      const detail = (e as CustomEvent<{ goalId?: string }>).detail;
+      void fetchQuizzes(detail?.goalId);
+    };
+    window.addEventListener("learnitt:goal-changed", onGoalChanged);
+    return () => window.removeEventListener("learnitt:goal-changed", onGoalChanged);
+  }, [fetchQuizzes]);
+
+  // Keep selectedSkillId synced when switching goal tabs
+  React.useEffect(() => {
+    const matchingSkills =
+      selectedGoalId === "all"
+        ? availableSkills
+        : availableSkills.filter((s) => s.goal_id === selectedGoalId);
+    if (matchingSkills.length > 0 && !matchingSkills.some((s) => s.id === selectedSkillId)) {
+      setSelectedSkillId(matchingSkills[0].id);
+    }
+  }, [selectedGoalId, availableSkills, selectedSkillId]);
+
+  // Handle on-demand quiz generation for a skill
+  const generateQuizForSkill = async (skillIdToGenerate: string, fromInline = false) => {
+    if (!skillIdToGenerate) {
       toast.error("Please select a skill to quiz.");
       return;
     }
 
     try {
-      setIsGenerating(true);
-      const res = await fetch(`/api/v1/skills/${selectedSkillId}/quizzes?sync=true`, {
+      if (fromInline) {
+        setInlineGeneratingSkillId(skillIdToGenerate);
+      } else {
+        setIsGenerating(true);
+      }
+      const res = await fetch(`/api/v1/skills/${skillIdToGenerate}/quizzes?sync=true`, {
         method: "POST",
       });
 
@@ -109,7 +160,7 @@ export default function QuizzesPage() {
       }
 
       const data = await res.json();
-      toast.success("Quiz generated successfully!");
+      toast.success("Quiz generated! Launching assessment...");
       setIsGenerateOpen(false);
 
       if (data.quiz?.id) {
@@ -122,8 +173,11 @@ export default function QuizzesPage() {
       toast.error(message);
     } finally {
       setIsGenerating(false);
+      setInlineGeneratingSkillId(null);
     }
   };
+
+  const handleGenerateQuiz = () => generateQuizForSkill(selectedSkillId, false);
 
   if (loading) {
     return (
@@ -153,8 +207,26 @@ export default function QuizzesPage() {
     );
   }
 
-  // Filter quizzes
-  const filteredQuizzes = quizzes.filter((q) => {
+  const selectedGoalObj = goals.find((g) => g.id === selectedGoalId) || null;
+
+  // Scope available skills & quizzes to selected goal (or all goals)
+  const scopedSkills =
+    selectedGoalId === "all"
+      ? availableSkills
+      : availableSkills.filter((s) => s.goal_id === selectedGoalId);
+
+  const scopedQuizzes =
+    selectedGoalId === "all"
+      ? quizzes
+      : quizzes.filter((q) => q.goal_id === selectedGoalId);
+
+  const scopedTotalCount = scopedQuizzes.length;
+  const scopedPassedCount = scopedQuizzes.filter((q) => q.status === "passed").length;
+  const scopedPassRate =
+    scopedTotalCount > 0 ? Math.round((scopedPassedCount / scopedTotalCount) * 100) : 0;
+
+  // Filter quizzes by search & status
+  const filteredQuizzes = scopedQuizzes.filter((q) => {
     const matchesQuery =
       searchQuery === "" ||
       q.skill_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -195,6 +267,63 @@ export default function QuizzesPage() {
           </div>
         </div>
 
+        {/* Goal Context Selector Bar */}
+        {goals.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface/40 p-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold px-1 flex items-center gap-1.5">
+                <Target className="size-3.5 text-primary" />
+                <span>Goal Track:</span>
+              </span>
+              {goals.map((g) => {
+                const isSelected = selectedGoalId === g.id;
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setSelectedGoalId(g.id)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      isSelected
+                        ? "bg-primary/15 text-primary border-primary/40 font-semibold shadow-xs"
+                        : "bg-background/80 text-muted-foreground border-border/70 hover:text-foreground hover:border-border"
+                    }`}
+                  >
+                    <span>{g.title}</span>
+                    {g.status === "active" && (
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/20 text-primary">
+                        Active
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+              {goals.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedGoalId("all")}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                    selectedGoalId === "all"
+                      ? "bg-primary/15 text-primary border-primary/40 font-semibold shadow-xs"
+                      : "bg-background/80 text-muted-foreground border-border/70 hover:text-foreground hover:border-border"
+                  }`}
+                >
+                  All Goals ({availableSkills.length} skills)
+                </button>
+              )}
+            </div>
+
+            {selectedGoalObj && (
+              <Link
+                href={`/goals/${selectedGoalObj.id}/graph`}
+                className="text-xs font-mono text-primary hover:underline flex items-center gap-1"
+              >
+                <span>View {selectedGoalObj.title} Curriculum</span>
+                <ArrowRight className="size-3" />
+              </Link>
+            )}
+          </div>
+        )}
+
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card className="border-border/70 bg-card/60 shadow-xs">
@@ -204,11 +333,13 @@ export default function QuizzesPage() {
                 <span>Quizzes Completed</span>
               </span>
               <CardTitle className="text-3xl font-mono font-bold pt-1">
-                {stats.passed_quizzes} <span className="text-sm font-normal text-muted-foreground">/ {stats.total_quizzes}</span>
+                {scopedPassedCount} <span className="text-sm font-normal text-muted-foreground">/ {scopedTotalCount}</span>
               </CardTitle>
               <CardDescription className="text-xs">
-                {stats.total_quizzes > 0
-                  ? `${stats.passed_quizzes} assessments successfully cleared`
+                {scopedTotalCount > 0
+                  ? `${scopedPassedCount} assessments successfully cleared`
+                  : selectedGoalObj
+                  ? `No quizzes taken yet for ${selectedGoalObj.title}`
                   : "No quizzes taken yet"}
               </CardDescription>
             </CardHeader>
@@ -221,7 +352,7 @@ export default function QuizzesPage() {
                 <span>Pass Rate</span>
               </span>
               <CardTitle className="text-3xl font-mono font-bold pt-1">
-                {stats.pass_rate_percent}%
+                {scopedPassRate}%
               </CardTitle>
               <CardDescription className="text-xs">
                 Target ≥ 70% for verification criteria
@@ -236,10 +367,12 @@ export default function QuizzesPage() {
                 <span>Available Skills</span>
               </span>
               <CardTitle className="text-3xl font-mono font-bold pt-1">
-                {availableSkills.length}
+                {scopedSkills.length}
               </CardTitle>
               <CardDescription className="text-xs">
-                Competencies eligible for assessment
+                {selectedGoalObj
+                  ? `Competencies in ${selectedGoalObj.title}`
+                  : "Competencies eligible for assessment"}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -274,13 +407,19 @@ export default function QuizzesPage() {
 
         {/* Quizzes List */}
         {filteredQuizzes.length === 0 ? (
-          <div className="rounded-2xl border border-border/80 bg-card p-10 text-center">
+          <div className="rounded-2xl border border-border/80 bg-card p-8 text-center">
             <EmptyState
               icon={<CheckCircle2 className="size-6 text-primary" />}
-              title={quizzes.length === 0 ? "No Quizzes Generated Yet" : "No Quizzes Match Your Filter"}
+              title={
+                scopedQuizzes.length === 0
+                  ? selectedGoalObj
+                    ? `No Quizzes Generated Yet for "${selectedGoalObj.title}"`
+                    : "No Quizzes Generated Yet"
+                  : "No Quizzes Match Your Filter"
+              }
               description={
-                quizzes.length === 0
-                  ? "Generate your first interactive assessment to test active recall and elevate your skills."
+                scopedQuizzes.length === 0
+                  ? "Select any skill below to generate a 3-question interactive assessment with active recall and rubric grading."
                   : "Try adjusting your search query or filter selection."
               }
               action={
@@ -353,6 +492,91 @@ export default function QuizzesPage() {
             ))}
           </div>
         )}
+
+        {/* Quick-Launch Curriculum Skill Assessments Grid */}
+        {scopedSkills.length > 0 && (
+          <section className="space-y-4 pt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <Sparkles className="size-4 text-primary" />
+                  <span>
+                    {selectedGoalObj
+                      ? `${selectedGoalObj.title}: Curriculum Skills Ready to Test`
+                      : "Curriculum Skills Ready to Test"}
+                  </span>
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Click any skill below to immediately generate a tailored 3-question quiz (multiple-choice, true/false, and applied rubric).
+                </p>
+              </div>
+              <Badge variant="outline" className="font-mono text-[11px] w-fit">
+                {scopedSkills.length} Skills
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {scopedSkills.map((skill, idx) => {
+                const isGeneratingThis = inlineGeneratingSkillId === skill.id;
+                const existingQuiz = quizzes.find((q) => q.skill_id === skill.id);
+                return (
+                  <div
+                    key={skill.id}
+                    className="rounded-xl border border-border/80 bg-card/60 hover:border-primary/40 p-4 flex flex-col justify-between gap-3 transition-all"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                          Module {idx + 1} · E{skill.evidence_level}
+                        </span>
+                        <Badge variant="outline" className="text-[10px] font-mono uppercase">
+                          {skill.verification_type}
+                        </Badge>
+                      </div>
+                      <p className="text-xs sm:text-sm font-semibold text-foreground leading-snug">
+                        {skill.name}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {skill.goal_title}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-border/50 flex items-center justify-between gap-2">
+                      {existingQuiz ? (
+                        <Link href={`/quizzes/${existingQuiz.id}`} className="w-full">
+                          <Button size="sm" variant="outline" className="w-full h-8 text-xs gap-1.5">
+                            <span>{existingQuiz.status === "passed" ? "Retake Quiz" : "Open Quiz"}</span>
+                            <ArrowRight className="size-3.5" />
+                          </Button>
+                        </Link>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={isGeneratingThis || isGenerating}
+                          onClick={() => generateQuizForSkill(skill.id, true)}
+                          className="w-full h-8 text-xs gap-1.5 font-semibold"
+                        >
+                          {isGeneratingThis ? (
+                            <>
+                              <Loader2 className="size-3.5 animate-spin" />
+                              <span>Generating...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="size-3.5 text-primary" />
+                              <span>Generate &amp; Start Quiz</span>
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Generate Quiz Dialog */}
@@ -361,12 +585,14 @@ export default function QuizzesPage() {
           <DialogHeader>
             <DialogTitle>Generate Skill Quiz</DialogTitle>
             <DialogDescription>
-              Select any skill from your curriculum. Learnitt will generate 3 to 5 targeted questions with an evaluation rubric.
+              {selectedGoalObj
+                ? `Select a competency from "${selectedGoalObj.title}". Learnitt will generate 3 targeted questions with an evaluation rubric.`
+                : "Select any skill from your curriculum. Learnitt will generate 3 targeted questions with an evaluation rubric."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {availableSkills.length === 0 ? (
+            {scopedSkills.length === 0 ? (
               <div className="text-center py-6 text-xs text-muted-foreground">
                 <p>No skills found. Create a goal first to generate quizzes.</p>
                 <Link href="/goals/new" className="mt-3 inline-block">
@@ -376,24 +602,50 @@ export default function QuizzesPage() {
                 </Link>
               </div>
             ) : (
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-foreground">
-                  Choose Skill to Test
-                </label>
-                <select
-                  value={selectedSkillId}
-                  onChange={(e) => setSelectedSkillId(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-medium"
-                >
-                  {availableSkills.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.goal_title})
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-muted-foreground">
-                  Includes multiple-choice, true/false, and applied questions grounded in your learning plan.
-                </p>
+              <div className="space-y-3">
+                {goals.length > 1 && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">
+                      Goal Track
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {goals.map((g) => (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => setSelectedGoalId(g.id)}
+                          className={`px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors ${
+                            selectedGoalId === g.id
+                              ? "bg-primary/15 text-primary border-primary/40 font-semibold"
+                              : "bg-surface text-muted-foreground border-border hover:text-foreground"
+                          }`}
+                        >
+                          {g.title}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">
+                    Choose Skill to Test
+                  </label>
+                  <select
+                    value={selectedSkillId}
+                    onChange={(e) => setSelectedSkillId(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+                  >
+                    {scopedSkills.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.goal_title})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Includes multiple-choice, true/false, and applied questions grounded in your learning plan.
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -411,7 +663,7 @@ export default function QuizzesPage() {
             <Button
               type="button"
               size="sm"
-              disabled={isGenerating || availableSkills.length === 0}
+              disabled={isGenerating || scopedSkills.length === 0}
               onClick={handleGenerateQuiz}
               className="gap-1.5"
             >

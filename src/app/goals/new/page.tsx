@@ -15,13 +15,82 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, ArrowRight, CheckCircle2, FileText, Loader2, Sparkles, UploadCloud } from "lucide-react";
 
 const DOMAIN_SUGGESTIONS = [
-  "Data Engineering",
   "Piano & Music Theory",
   "Visual Arts & Painting",
-  "Health Analytics",
+  "Culinary & Pastry Arts",
+  "Data Engineering",
+  "Health & Biostatistics",
+  "Language Fluency",
   "Cloud Architecture",
   "Machine Learning",
-  "Culinary Arts",
+  "Product Design & UX",
+];
+
+interface GoalTemplatePreset {
+  id: string;
+  badge: string;
+  title: string;
+  domain: string;
+  level: "beginner" | "intermediate" | "advanced";
+  weeklyHours: number;
+  summary: string;
+}
+
+const GOAL_TEMPLATE_PRESETS: GoalTemplatePreset[] = [
+  {
+    id: "piano",
+    badge: "Music & Instrument",
+    title: "Classical & Contemporary Piano Mastery",
+    domain: "Piano & Music Theory",
+    level: "beginner",
+    weeklyHours: 5,
+    summary: "12 modules: bench ergonomics, grand staff sight-reading, rhythmic subdivisions, scales, and two-hand repertoire.",
+  },
+  {
+    id: "arts",
+    badge: "Visual Arts",
+    title: "Visual Arts, Drawing & Painting Foundations",
+    domain: "Visual Arts & Painting",
+    level: "beginner",
+    weeklyHours: 6,
+    summary: "12 modules: line weight, 1/2/3-point perspective, 5-value chiaroscuro, color harmony, and figure proportion.",
+  },
+  {
+    id: "data",
+    badge: "Software & Data",
+    title: "Modern Data Engineering",
+    domain: "Data Engineering",
+    level: "intermediate",
+    weeklyHours: 8,
+    summary: "12 modules: SQL window functions, dimensional modeling, Python ETL, Spark, Airflow, and dbt.",
+  },
+  {
+    id: "culinary",
+    badge: "Culinary Arts",
+    title: "Professional Culinary & Pastry Technique",
+    domain: "Culinary & Pastry Arts",
+    level: "beginner",
+    weeklyHours: 5,
+    summary: "12 modules: knife precision, mother sauces, Maillard reaction, emulsions, fermentation, and plating.",
+  },
+  {
+    id: "health",
+    badge: "Health & Science",
+    title: "Biostatistics & Clinical Data Analysis",
+    domain: "Health & Biostatistics",
+    level: "intermediate",
+    weeklyHours: 7,
+    summary: "12 modules: probability distributions, hypothesis testing, survival analysis, and regression modeling.",
+  },
+  {
+    id: "language",
+    badge: "Languages",
+    title: "Conversational & Written Language Fluency",
+    domain: "Language Fluency",
+    level: "beginner",
+    weeklyHours: 6,
+    summary: "12 modules: phonetics, high-frequency vocabulary, verb tenses, listening comprehension, and dialogue.",
+  },
 ];
 
 const WEEKDAY_NAMES = [
@@ -40,9 +109,10 @@ export default function GoalSetupWizardPage() {
   const [activeTab, setActiveTab] = React.useState<"wizard" | "import">("wizard");
 
   // Form state
-  const [title, setTitle] = React.useState("Modern Data Engineering");
-  const [domain, setDomain] = React.useState("Data Engineering");
-  const [startingLevel, setStartingLevel] = React.useState<"beginner" | "intermediate" | "advanced">("intermediate");
+  const [title, setTitle] = React.useState("");
+  const [domain, setDomain] = React.useState("");
+  const [startingLevel, setStartingLevel] = React.useState<"beginner" | "intermediate" | "advanced">("beginner");
+  const [selectedPresetId, setSelectedPresetId] = React.useState<string | null>(null);
 
   // Default target date 120 days in the future
   const defaultFutureDate = React.useMemo(() => {
@@ -52,8 +122,33 @@ export default function GoalSetupWizardPage() {
   }, []);
 
   const [targetDate, setTargetDate] = React.useState<string>(defaultFutureDate);
-  const [weeklyHours, setWeeklyHours] = React.useState<number[]>([8]);
+  const [weeklyHours, setWeeklyHours] = React.useState<number[]>([6]);
   const [studyDays, setStudyDays] = React.useState<number[]>([1, 2, 3, 4, 5]);
+
+  // Apply ?template= query param if navigated from Landing Page
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const tpl = params.get("template")?.toLowerCase();
+    if (tpl) {
+      const preset = GOAL_TEMPLATE_PRESETS.find((p) => p.id === tpl);
+      if (preset) {
+        setSelectedPresetId(preset.id);
+        setTitle(preset.title);
+        setDomain(preset.domain);
+        setStartingLevel(preset.level);
+        setWeeklyHours([preset.weeklyHours]);
+      }
+    }
+  }, []);
+
+  function applyPreset(preset: GoalTemplatePreset) {
+    setSelectedPresetId(preset.id);
+    setTitle(preset.title);
+    setDomain(preset.domain);
+    setStartingLevel(preset.level);
+    setWeeklyHours([preset.weeklyHours]);
+  }
 
   // Async & Generation state
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -162,7 +257,10 @@ export default function GoalSetupWizardPage() {
         throw new Error("Skill graph generation is still processing. Please check back in a moment.");
       }
 
-      setGenerationStatus("Graph generated. Redirecting to skill graph editor...");
+      setGenerationStatus("Generating initial 14-day study schedule & linked guides...");
+      await fetch(`/api/v1/goals/${goal.id}/plan/generate`, { method: "POST" }).catch(() => null);
+
+      setGenerationStatus("Graph & plan ready. Redirecting to curriculum roadmap...");
       router.push(`/goals/${goal.id}/graph`);
     } catch (err: unknown) {
       setErrorMessage((err as Error).message);
@@ -314,70 +412,139 @@ export default function GoalSetupWizardPage() {
                 <CardHeader>
                   <CardTitle className="text-base">Goal Information</CardTitle>
                   <CardDescription>
-                    Describe what you want to achieve and your current experience level.
+                    Pick a curated discipline template below or type any custom learning goal in any field.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-5">
-                  <Field label="Goal Title" hint="What specific capability or mastery are you building?">
-                    <Input
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="e.g. Modern Data Engineering"
-                    />
-                  </Field>
-
-                  <Field label="Domain" hint="Pick a suggested domain or enter your own.">
-                    <Input
-                      value={domain}
-                      onChange={(e) => setDomain(e.target.value)}
-                      placeholder="e.g. Data Engineering"
-                    />
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {DOMAIN_SUGGESTIONS.map((d) => (
+                <CardContent className="space-y-6">
+                  {/* 1-Click Starter Templates */}
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <Sparkles className="size-3.5 text-primary" />
+                        <span>Quick-Start Goal Tracks (or type your own below)</span>
+                      </span>
+                      {selectedPresetId && (
                         <button
-                          key={d}
                           type="button"
-                          onClick={() => setDomain(d)}
-                          className={`text-[11px] px-2 py-0.5 rounded border transition-colors ${
-                            domain === d
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-surface text-muted-foreground border-border hover:border-foreground"
-                          }`}
+                          onClick={() => {
+                            setSelectedPresetId(null);
+                            setTitle("");
+                            setDomain("");
+                          }}
+                          className="text-[11px] font-mono text-primary hover:underline"
                         >
-                          {d}
+                          Clear &amp; Write Custom Goal
                         </button>
-                      ))}
+                      )}
                     </div>
-                  </Field>
 
-                  <Field label="Starting Level" hint="Calibrates the depth of the initial skill prerequisites.">
-                    <div className="grid grid-cols-3 gap-2">
-                      {(["beginner", "intermediate", "advanced"] as const).map((lvl) => (
-                        <button
-                          key={lvl}
-                          type="button"
-                          onClick={() => setStartingLevel(lvl)}
-                          className={`py-2 px-3 rounded text-xs font-medium capitalize border transition-all ${
-                            startingLevel === lvl
-                              ? "bg-primary/10 border-primary text-primary font-semibold"
-                              : "bg-card border-border text-muted-foreground hover:border-foreground/50"
-                          }`}
-                        >
-                          {lvl}
-                        </button>
-                      ))}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {GOAL_TEMPLATE_PRESETS.map((preset) => {
+                        const isSelected = selectedPresetId === preset.id;
+                        return (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => applyPreset(preset)}
+                            className={`text-left rounded-xl border p-3 transition-all flex flex-col justify-between gap-1.5 ${
+                              isSelected
+                                ? "bg-primary/15 border-primary/50 shadow-xs"
+                                : "bg-surface/40 border-border/80 hover:border-primary/40 hover:bg-surface/80"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-mono uppercase tracking-wider text-primary font-semibold">
+                                {preset.badge}
+                              </span>
+                              <span className="text-[10px] font-mono text-muted-foreground capitalize">
+                                {preset.level} · {preset.weeklyHours}h/wk
+                              </span>
+                            </div>
+                            <p className="text-xs font-bold text-foreground">
+                              {preset.title}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
+                              {preset.summary}
+                            </p>
+                          </button>
+                        );
+                      })}
                     </div>
-                  </Field>
+                  </div>
 
-                  <div className="flex justify-end pt-2">
-                    <Button
-                      onClick={() => setCurrentStep(1)}
-                      disabled={!title.trim()}
-                      className="gap-2"
-                    >
-                      <span>Continue to Schedule</span>
-                      <ArrowRight className="size-4" />
-                    </Button>
+                  <div className="border-t border-border/60 pt-4 space-y-5">
+                    <Field label="Goal Title" hint="What specific capability, instrument, craft, or subject are you mastering?">
+                      <Input
+                        value={title}
+                        onChange={(e) => {
+                          setTitle(e.target.value);
+                          setSelectedPresetId(null);
+                        }}
+                        placeholder="e.g. Classical Piano Mastery, Oil Painting Foundations, or Modern Data Engineering"
+                      />
+                    </Field>
+
+                    <Field label="Domain / Field" hint="Pick a suggested domain or type any discipline.">
+                      <Input
+                        value={domain}
+                        onChange={(e) => {
+                          setDomain(e.target.value);
+                          setSelectedPresetId(null);
+                        }}
+                        placeholder="e.g. Piano & Music Theory, Visual Arts, Culinary Arts, Data Engineering"
+                      />
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {DOMAIN_SUGGESTIONS.map((d) => (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => setDomain(d)}
+                            className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${
+                              domain === d
+                                ? "bg-primary text-primary-foreground border-primary font-semibold"
+                                : "bg-surface text-muted-foreground border-border hover:border-foreground"
+                            }`}
+                          >
+                            {d}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+
+                    <Field label="Starting Level" hint="Calibrates the depth of the initial skill prerequisites and study guides.">
+                      <div className="grid grid-cols-3 gap-2">
+                        {(["beginner", "intermediate", "advanced"] as const).map((lvl) => (
+                          <button
+                            key={lvl}
+                            type="button"
+                            onClick={() => setStartingLevel(lvl)}
+                            className={`py-2 px-3 rounded-lg text-xs font-medium capitalize border transition-all ${
+                              startingLevel === lvl
+                                ? "bg-primary/15 border-primary text-primary font-semibold"
+                                : "bg-card border-border text-muted-foreground hover:border-foreground/50"
+                            }`}
+                          >
+                            {lvl}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+
+                    <div className="flex justify-end pt-2">
+                      <Button
+                        onClick={() => {
+                          if (!domain.trim() && title.trim()) {
+                            setDomain(title.trim());
+                          }
+                          setCurrentStep(1);
+                        }}
+                        disabled={!title.trim()}
+                        className="gap-2"
+                      >
+                        <span>Continue to Schedule</span>
+                        <ArrowRight className="size-4" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

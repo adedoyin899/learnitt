@@ -27,6 +27,12 @@ import { toast } from "sonner";
 
 export default function MetricsPage() {
   const [metrics, setMetrics] = React.useState<PilotMetrics | null>(null);
+  const [activeGoalSummary, setActiveGoalSummary] = React.useState<{
+    title: string;
+    domain: string;
+    weekly_hours: number;
+    target_date: string;
+  } | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [errorStatus, setErrorStatus] = React.useState<number | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -37,7 +43,10 @@ export default function MetricsPage() {
       setLoading(true);
       setErrorStatus(null);
       setError(null);
-      const res = await fetch("/api/v1/metrics");
+      const [res, goalsRes] = await Promise.all([
+        fetch("/api/v1/metrics"),
+        fetch("/api/v1/goals").catch(() => null),
+      ]);
       if (res.status === 401) {
         setErrorStatus(401);
         return;
@@ -51,6 +60,20 @@ export default function MetricsPage() {
       } else {
         throw new Error("Invalid metrics format");
       }
+
+      if (goalsRes && goalsRes.ok) {
+        const gData = await goalsRes.json().catch(() => null);
+        const goalsList = Array.isArray(gData?.goals) ? gData.goals : [];
+        const active = goalsList.find((g: any) => g.status === "active") || goalsList[0] || null;
+        if (active) {
+          setActiveGoalSummary({
+            title: active.title,
+            domain: active.domain,
+            weekly_hours: active.weekly_hours,
+            target_date: active.target_date,
+          });
+        }
+      }
     } catch (err: unknown) {
       setError((err as Error).message || "Error loading metrics");
     } finally {
@@ -60,6 +83,15 @@ export default function MetricsPage() {
 
   React.useEffect(() => {
     fetchMetrics();
+  }, [fetchMetrics]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onGoalChanged = () => {
+      void fetchMetrics();
+    };
+    window.addEventListener("learnitt:goal-changed", onGoalChanged);
+    return () => window.removeEventListener("learnitt:goal-changed", onGoalChanged);
   }, [fetchMetrics]);
 
   const handleDownloadReview = async () => {
@@ -172,10 +204,12 @@ export default function MetricsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                Pilot Metrics & Run Health
+                Pilot Metrics &amp; Run Health
               </h1>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                Real data engineering pilot: 8 hrs/week, 6 months, Mon–Fri.
+                {activeGoalSummary
+                  ? `Active Goal: ${activeGoalSummary.title} (${activeGoalSummary.domain}) · ${activeGoalSummary.weekly_hours} hrs/week · Target ${activeGoalSummary.target_date}`
+                  : "System habit adherence, check-in velocity, verified competency mix, and AI call budget."}
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-md border border-border/50">

@@ -53,13 +53,22 @@ export async function GET(req: NextRequest) {
       throw quizErr;
     }
 
-    // 2. Fetch user's goals
+    // 2. Fetch user's goals (ordered by status=active first, then newest)
     const { data: goals } = await supabase
       .from("goals")
-      .select("id, title, status")
-      .eq("owner_id", user.id);
+      .select("id, title, domain, status, created_at")
+      .eq("owner_id", user.id)
+      .order("created_at", { ascending: false });
 
-    const goalMap = new Map((goals || []).map((g) => [g.id, g.title]));
+    const sortedGoals = [...(goals || [])].sort((a, b) => {
+      if (a.status === "active" && b.status !== "active") return -1;
+      if (a.status !== "active" && b.status === "active") return 1;
+      return 0;
+    });
+
+    const activeGoal = sortedGoals.find((g) => g.status === "active") || sortedGoals[0] || null;
+    const activeGoalId = activeGoal?.id || null;
+    const goalMap = new Map(sortedGoals.map((g) => [g.id, g.title]));
 
     // 3. Fetch user's skills
     const { data: skills } = await supabase
@@ -163,16 +172,22 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // 7. Prepare available skills for on-demand quiz generation
-    const availableSkills: AvailableSkillItem[] = (skills || []).map((s) => ({
-      id: s.id,
-      name: s.name,
-      goal_id: s.goal_id,
-      goal_title: goalMap.get(s.goal_id) || "Learning Goal",
-      status: s.status,
-      evidence_level: s.evidence_level,
-      verification_type: s.verification_type,
-    }));
+    // 7. Prepare available skills for on-demand quiz generation (active goal skills first)
+    const availableSkills: AvailableSkillItem[] = (skills || [])
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        goal_id: s.goal_id,
+        goal_title: goalMap.get(s.goal_id) || "Learning Goal",
+        status: s.status,
+        evidence_level: s.evidence_level,
+        verification_type: s.verification_type,
+      }))
+      .sort((a, b) => {
+        if (a.goal_id === activeGoalId && b.goal_id !== activeGoalId) return -1;
+        if (a.goal_id !== activeGoalId && b.goal_id === activeGoalId) return 1;
+        return 0;
+      });
 
     // Stats
     const totalCount = quizList.length;
@@ -181,6 +196,13 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      active_goal_id: activeGoalId,
+      goals: sortedGoals.map((g) => ({
+        id: g.id,
+        title: g.title,
+        domain: g.domain || "General",
+        status: g.status,
+      })),
       quizzes: quizList,
       available_skills: availableSkills,
       stats: {

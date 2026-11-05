@@ -64,12 +64,14 @@ interface ChatPanelProps {
   initialConversation: ConversationContext;
   initialMessages: MessageItem[];
   skillsList?: Array<{ id: string; name: string }>;
+  onSwitchSkill?: (skillId: string) => void;
 }
 
 export function ChatPanel({
   initialConversation,
   initialMessages,
-  skillsList: _skillsList = [],
+  skillsList = [],
+  onSwitchSkill,
 }: ChatPanelProps) {
   const router = useRouter();
   const [conversation] = React.useState(initialConversation);
@@ -223,32 +225,94 @@ export function ChatPanel({
     conversation.goals?.health_flag || (conversation as any).is_health_goal
   );
 
+  const activeSkillName =
+    conversation.skills?.name ||
+    skillsList.find((s) => s.id === conversation.skill_id)?.name ||
+    null;
+  const activeGoalTitle = conversation.goals?.title || "Active Learning Goal";
+
+  const starterPrompts = React.useMemo(() => {
+    const contextLower = `${activeGoalTitle} ${activeSkillName || ""}`.toLowerCase();
+    if (/(piano|music|chord|rhythm|scale|staff|keyboard)/.test(contextLower)) {
+      return [
+        `How should I structure a 15-minute slow-tempo practice session for ${activeSkillName || "piano"}?`,
+        "Explain how wrist rotation and relaxed finger weight prevent tension during scales and chords.",
+        "What is the best step-by-step drill to coordinate left-hand accompaniment with right-hand melody?",
+      ];
+    }
+    if (/(art|draw|paint|sketch|color|value|perspective)/.test(contextLower)) {
+      return [
+        `What is a practical 15-minute studio exercise to practice ${activeSkillName || "value and form"}?`,
+        "How do I group complex lighting into a clear 2-value or 5-value study?",
+        "What are the most common proportion and perspective mistakes and how do I check for them?",
+      ];
+    }
+    if (/(sql|database|data|spark|airflow|dbt|python)/.test(contextLower)) {
+      return [
+        `Can you walk me through a practical example of ${activeSkillName || "SQL window functions"}?`,
+        "What are the key performance trade-offs and edge cases I should watch out for?",
+        "Give me a 15-minute hands-on diagnostic problem to verify my understanding.",
+      ];
+    }
+    return [
+      `Break down the core mental model of ${activeSkillName || activeGoalTitle} with a concrete example.`,
+      `How should I structure a 15-minute focused practice block for ${activeSkillName || activeGoalTitle}?`,
+      "What are the most common beginner mistakes in this topic and how do I self-correct?",
+    ];
+  }, [activeGoalTitle, activeSkillName]);
+
   return (
     <div className="flex flex-col h-[calc(100vh-5rem)] max-w-4xl mx-auto border rounded-xl bg-card shadow-sm overflow-hidden">
       {/* Top Header & Health Standing Note */}
       <div className="border-b bg-muted/30 p-4 space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center text-primary font-semibold shrink-0">
               <Sparkles className="h-4 w-4" />
             </div>
             <div>
-              <h1 className="text-base font-semibold leading-tight">
-                {conversation.skills?.name
-                  ? `Tutor: ${conversation.skills.name}`
-                  : "Personal Grounded Tutor"}
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                Grounded strictly in your uploaded materials and confirmed skill chunks.
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-base font-semibold leading-tight">
+                  {activeSkillName ? `Tutor: ${activeSkillName}` : `Tutor: ${activeGoalTitle}`}
+                </h1>
+                {conversation.goals?.title && (
+                  <Badge variant="outline" className="text-[10px] font-mono border-primary/30 text-primary">
+                    {conversation.goals.title}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Grounded in your active curriculum, study guides, and uploaded materials.
               </p>
             </div>
           </div>
 
-          {conversation.skills?.name && (
-            <Badge variant="outline" className="text-xs gap-1 py-1">
-              <Layers className="h-3 w-3 text-primary" />
-              <span>Skill: {conversation.skills.name}</span>
-            </Badge>
+          {skillsList.length > 0 && onSwitchSkill ? (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-mono text-muted-foreground hidden sm:inline">
+                Focus Skill:
+              </span>
+              <select
+                value={conversation.skill_id || ""}
+                onChange={(e) => onSwitchSkill(e.target.value)}
+                aria-label="Select skill context for AI tutor"
+                className="bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary max-w-[240px] truncate"
+              >
+                <option value="">All Skills in {activeGoalTitle}</option>
+                {skillsList.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            activeSkillName && (
+              <Badge variant="outline" className="text-xs gap-1 py-1">
+                <Layers className="h-3 w-3 text-primary" />
+                <span>Skill: {activeSkillName}</span>
+              </Badge>
+            )
           )}
         </div>
 
@@ -256,7 +320,7 @@ export function ChatPanel({
         {isHealthGoal && (
           <Alert className="bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200 py-2">
             <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            <AlertTitle className="text-xs font-semibold">Health & Medical Content Notice</AlertTitle>
+            <AlertTitle className="text-xs font-semibold">Health &amp; Medical Content Notice</AlertTitle>
             <AlertDescription className="text-xs font-medium">
               This is for learning. It is not medical advice.
             </AlertDescription>
@@ -267,13 +331,35 @@ export function ChatPanel({
       {/* Message Stream */}
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
-            <BookOpen className="h-10 w-10 mb-3 opacity-40 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Ask anything about your study materials</h2>
-            <p className="text-xs max-w-md mt-1">
-              Ask questions to understand difficult passages, explore edge cases, or get clear explanations
-              grounded directly in your uploaded notes and textbooks.
-            </p>
+          <div className="h-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground space-y-5">
+            <div className="space-y-2">
+              <BookOpen className="h-10 w-10 mx-auto mb-2 opacity-60 text-primary" />
+              <h2 className="text-base font-semibold text-foreground">
+                Ask anything about {activeSkillName || activeGoalTitle}
+              </h2>
+              <p className="text-xs max-w-md mx-auto">
+                Ask questions to understand core concepts, get step-by-step practice drills, or explore examples grounded in your study guides and materials.
+              </p>
+            </div>
+
+            <div className="w-full max-w-xl space-y-2 text-left">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block text-center">
+                Suggested Questions for {activeSkillName || activeGoalTitle}
+              </span>
+              <div className="grid grid-cols-1 gap-2">
+                {starterPrompts.map((promptText, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setInputQuestion(promptText)}
+                    className="text-left text-xs px-3.5 py-2.5 rounded-xl border border-border/80 bg-surface/50 hover:bg-muted/70 hover:border-primary/40 text-foreground transition-all flex items-center justify-between gap-2"
+                  >
+                    <span>{promptText}</span>
+                    <Send className="size-3 text-primary shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           messages.map((msg) => {

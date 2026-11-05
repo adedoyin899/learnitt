@@ -60,6 +60,15 @@ function ProgressPageContent() {
     loadProgress();
   }, [loadProgress]);
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onGoalChanged = () => {
+      void loadProgress();
+    };
+    window.addEventListener("learnitt:goal-changed", onGoalChanged);
+    return () => window.removeEventListener("learnitt:goal-changed", onGoalChanged);
+  }, [loadProgress]);
+
   if (loading) {
     return <ProgressPageSkeleton />;
   }

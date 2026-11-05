@@ -76,7 +76,10 @@ export class RealAIProvider implements AIProvider {
 
         if (res.status === 503 || res.status === 502 || res.status === 500) {
           const errText = await res.text();
-          lastError = new Error(`Gemini provider temporary error (HTTP ${res.status}) on ${model}: ${errText}`);
+          const err = new Error(`Gemini provider temporary error (HTTP ${res.status}) on ${model}: ${errText}`);
+          (err as unknown as { status: number; isRetryable: boolean }).status = res.status;
+          (err as unknown as { status: number; isRetryable: boolean }).isRetryable = true;
+          lastError = err;
           continue;
         }
 

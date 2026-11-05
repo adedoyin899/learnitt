@@ -42,6 +42,15 @@ export default function ReviewPage() {
     loadDueItems();
   }, [loadDueItems]);
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onGoalChanged = () => {
+      void loadDueItems();
+    };
+    window.addEventListener("learnitt:goal-changed", onGoalChanged);
+    return () => window.removeEventListener("learnitt:goal-changed", onGoalChanged);
+  }, [loadDueItems]);
+
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-6 pt-12">

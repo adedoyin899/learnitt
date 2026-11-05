@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,10 @@ import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTarget = searchParams.get("redirect") || "/today";
+  const initialMode = searchParams.get("mode") === "signup" ? "signup" : "signin";
+  const [authMode, setAuthMode] = React.useState<"signin" | "signup">(initialMode);
+  const redirectTarget =
+    searchParams.get("redirect") || (authMode === "signup" ? "/goals/new" : "/today");
   const supabase = createClient();
 
   const [email, setEmail] = React.useState("");
@@ -156,22 +160,65 @@ function LoginContent() {
       </div>
 
       <Card className="relative z-10 w-full max-w-md bg-card/95 border-border shadow-2xl backdrop-blur-md">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="size-6 rounded bg-primary flex items-center justify-center text-primary-foreground font-mono text-xs font-bold">
-              L
-            </div>
-            <span className="font-mono text-sm tracking-widest uppercase text-muted-foreground">
-              Learnitt
-            </span>
+        <CardHeader className="space-y-2">
+          <div className="flex items-center justify-between mb-1">
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="size-6 rounded bg-primary flex items-center justify-center text-primary-foreground font-mono text-xs font-bold">
+                L
+              </div>
+              <span className="font-mono text-sm tracking-widest uppercase text-muted-foreground group-hover:text-foreground transition-colors">
+                Learnitt
+              </span>
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="size-3" />
+              <span>Back to Home</span>
+            </Link>
           </div>
-          <CardTitle className="text-2xl font-semibold tracking-tight">
-            {step === "email" ? "Welcome to Learnitt" : "Enter verification code"}
+
+          {step === "email" && (
+            <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-surface p-1 border border-border/80">
+              <button
+                type="button"
+                onClick={() => setAuthMode("signin")}
+                className={`py-1.5 px-3 rounded-md text-xs font-medium transition-all ${
+                  authMode === "signin"
+                    ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Existing User · Log In
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthMode("signup")}
+                className={`py-1.5 px-3 rounded-md text-xs font-medium transition-all ${
+                  authMode === "signup"
+                    ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                New User · Start Goal
+              </button>
+            </div>
+          )}
+
+          <CardTitle className="text-2xl font-semibold tracking-tight pt-1">
+            {step === "otp"
+              ? "Enter verification code"
+              : authMode === "signup"
+              ? "Start your first learning goal"
+              : "Welcome back to Learnitt"}
           </CardTitle>
           <CardDescription className="text-muted-foreground text-sm">
-            {step === "email"
-              ? "Sign in with your email to continue your personalized study loop."
-              : `We sent a code to ${email}. Enter it below.`}
+            {step === "otp"
+              ? `We sent a code to ${email}. Enter it below.`
+              : authMode === "signup"
+              ? "Enter your email to create your account and build a dynamic skill roadmap in any field."
+              : "Sign in with your email to continue your active study loop and curriculum."}
           </CardDescription>
         </CardHeader>
 

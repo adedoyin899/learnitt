@@ -126,8 +126,20 @@ export function TodayClient({ initialData }: TodayClientProps) {
 
     loadData();
 
+    const onGoalChanged = (e: Event) => {
+      const detail = (e as CustomEvent<{ goalId?: string }>).detail;
+      if (detail?.goalId) {
+        setSelectedGoalId(detail.goalId);
+        void refreshServerData(detail.goalId);
+      } else {
+        void refreshServerData("");
+      }
+    };
+    window.addEventListener("learnitt:goal-changed", onGoalChanged);
+
     return () => {
       isMounted = false;
+      window.removeEventListener("learnitt:goal-changed", onGoalChanged);
     };
   }, []);
 

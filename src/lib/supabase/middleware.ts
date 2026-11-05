@@ -88,6 +88,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   const isPublicAsset =
+    pathname === "/" ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/mock") ||
     pathname === "/favicon.ico" ||

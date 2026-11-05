@@ -7,17 +7,30 @@ export interface FallbackProviderOptions {
 
 export function isRetryableAIError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
-  const anyErr = error as { status?: number; isRateLimit?: boolean; message?: string };
-  if (anyErr.isRateLimit === true) return true;
-  if (anyErr.status === 429 || anyErr.status === 500 || anyErr.status === 502 || anyErr.status === 503) {
+  const anyErr = error as { status?: number; isRateLimit?: boolean; isRetryable?: boolean; message?: string };
+  if (anyErr.isRateLimit === true || anyErr.isRetryable === true) return true;
+  if (
+    anyErr.status === 429 ||
+    anyErr.status === 500 ||
+    anyErr.status === 502 ||
+    anyErr.status === 503 ||
+    anyErr.status === 504
+  ) {
     return true;
   }
   const msg = (anyErr.message || "").toLowerCase();
   return (
     msg.includes("429") ||
+    msg.includes("503") ||
+    msg.includes("502") ||
+    msg.includes("500") ||
     msg.includes("rate limit") ||
     msg.includes("quota exceeded") ||
-    msg.includes("server error")
+    msg.includes("server error") ||
+    msg.includes("temporary error") ||
+    msg.includes("unavailable") ||
+    msg.includes("high demand") ||
+    msg.includes("overloaded")
   );
 }
 
@@ -39,6 +52,9 @@ export class FallbackAIProvider implements AIProvider {
       return await this.primary.generateStructured<T>(args);
     } catch (primaryError) {
       if (!isRetryableAIError(primaryError)) {
+        if (this.fallback && this.fallback.id === "mock-fallback") {
+          return await this.fallback.generateStructured<T>(args);
+        }
         throw primaryError;
       }
 
@@ -46,7 +62,7 @@ export class FallbackAIProvider implements AIProvider {
       try {
         return await this.primary.generateStructured<T>(args);
       } catch (retryError) {
-        if (this.fallback && isRetryableAIError(retryError)) {
+        if (this.fallback && (isRetryableAIError(retryError) || this.fallback.id === "mock-fallback")) {
           // Send to fallback provider if configured
           return await this.fallback.generateStructured<T>(args);
         }

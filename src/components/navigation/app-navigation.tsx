@@ -2,18 +2,21 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Activity,
   BookOpen,
   Bot,
   Calendar,
   CheckCircle2,
+  ChevronDown,
   FolderOpen,
   Grid2X2,
   Layers,
+  Loader2,
   LogOut,
   Menu,
+  Plus,
   RotateCcw,
   Settings,
   TrendingUp,
@@ -111,15 +114,68 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
 
 const MOBILE_PRIMARY_HREFS = ["/today", "/plan", "/progress", "/review"];
 
+interface NavGoalSummary {
+  id: string;
+  title: string;
+  domain: string;
+  status: string;
+}
+
 export function AppNavigation() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [isOnline, setIsOnline] = React.useState(true);
+  const [goals, setGoals] = React.useState<NavGoalSummary[]>([]);
+  const [goalMenuOpen, setGoalMenuOpen] = React.useState(false);
+  const [switchingGoalId, setSwitchingGoalId] = React.useState<string | null>(null);
+  const goalMenuRef = React.useRef<HTMLDivElement>(null);
 
-  // Close mobile menu whenever pathname changes
+  // Close menus whenever pathname changes
   React.useEffect(() => {
     setMobileMenuOpen(false);
+    setGoalMenuOpen(false);
   }, [pathname]);
+
+  const loadGoals = React.useCallback(async () => {
+    if (typeof window === "undefined" || typeof fetch !== "function") return;
+    if (pathname === "/" || pathname === "/login" || pathname?.startsWith("/auth")) return;
+    try {
+      const res = await fetch("/api/v1/goals");
+      if (!res || !res.ok) return;
+      const json = await res.json();
+      if (Array.isArray(json?.goals)) {
+        setGoals(json.goals);
+      }
+    } catch {
+      // Ignore network/test environment errors
+    }
+  }, [pathname]);
+
+  React.useEffect(() => {
+    void loadGoals();
+  }, [loadGoals]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onGoalChanged = () => {
+      void loadGoals();
+    };
+    window.addEventListener("learnitt:goal-changed", onGoalChanged);
+    return () => window.removeEventListener("learnitt:goal-changed", onGoalChanged);
+  }, [loadGoals]);
+
+  // Close goal switcher dropdown on outside click
+  React.useEffect(() => {
+    if (!goalMenuOpen) return;
+    const onMouseDown = (e: MouseEvent) => {
+      if (goalMenuRef.current && !goalMenuRef.current.contains(e.target as Node)) {
+        setGoalMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, [goalMenuOpen]);
 
   // Track online/offline status
   React.useEffect(() => {
@@ -140,18 +196,46 @@ export function AppNavigation() {
 
   // Close on escape key
   React.useEffect(() => {
-    if (!mobileMenuOpen) return;
+    if (!mobileMenuOpen && !goalMenuOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMobileMenuOpen(false);
+      if (e.key === "Escape") {
+        setMobileMenuOpen(false);
+        setGoalMenuOpen(false);
+      }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [mobileMenuOpen]);
+  }, [mobileMenuOpen, goalMenuOpen]);
 
-  // Do not render navigation on authentication routes
-  if (pathname === "/login" || pathname?.startsWith("/auth")) {
+  // Do not render app navigation on landing page or authentication routes
+  if (pathname === "/" || pathname === "/login" || pathname?.startsWith("/auth")) {
     return null;
   }
+
+  const activeGoal = goals.find((g) => g.status === "active") || goals[0] || null;
+
+  const handleSwitchGoal = async (goalId: string) => {
+    try {
+      setSwitchingGoalId(goalId);
+      const res = await fetch(`/api/v1/goals/${goalId}/activate`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        await loadGoals();
+        setGoalMenuOpen(false);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("learnitt:goal-changed", { detail: { goalId } })
+          );
+        }
+        router.refresh();
+      }
+    } catch {
+      // Ignore errors
+    } finally {
+      setSwitchingGoalId(null);
+    }
+  };
 
   const isSettingsActive = pathname.startsWith("/settings");
   const isMoreActive =
@@ -185,11 +269,11 @@ export function AppNavigation() {
         className="sticky top-0 z-40 w-full border-b border-border/70 bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 transition-colors"
       >
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-3 sm:px-6 gap-2">
-          {/* Brand Logo & Offline Indicator */}
-          <div className="flex items-center gap-3 shrink-0">
+          {/* Brand Logo, Active Goal Switcher & Offline Indicator */}
+          <div className="flex items-center gap-2.5 shrink-0">
             <Link
               href="/today"
-              className="flex items-center gap-2.5 group rounded-lg p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="flex items-center gap-2 group rounded-lg p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <div
                 aria-hidden="true"
@@ -201,6 +285,101 @@ export function AppNavigation() {
                 Learnitt
               </span>
             </Link>
+
+            {/* Global Active Goal Switcher Pill */}
+            {goals.length > 0 && activeGoal && (
+              <div className="relative" ref={goalMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setGoalMenuOpen((prev) => !prev)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-surface/80 hover:bg-muted/70 px-2.5 py-1 text-xs font-medium text-foreground transition-colors max-w-[180px] sm:max-w-[220px]"
+                  title={`Active Goal: ${activeGoal.title} (${activeGoal.domain})`}
+                  aria-label="Switch active learning goal"
+                >
+                  <span className="size-2 rounded-full bg-primary shrink-0" />
+                  <span className="truncate font-semibold">{activeGoal.title}</span>
+                  <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+                </button>
+
+                {goalMenuOpen && (
+                  <div className="absolute left-0 mt-2 w-72 rounded-xl border border-border bg-card p-2 shadow-xl z-50 space-y-1.5 animate-fade-in">
+                    <div className="px-2.5 py-1 flex items-center justify-between border-b border-border/60">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
+                        Switch Active Goal
+                      </span>
+                      <Link
+                        href="/goals"
+                        onClick={() => setGoalMenuOpen(false)}
+                        className="text-[11px] text-primary hover:underline font-medium"
+                      >
+                        Manage All
+                      </Link>
+                    </div>
+
+                    <div className="max-h-60 overflow-y-auto space-y-1 py-0.5">
+                      {goals.map((g) => {
+                        const isCurrent = g.id === activeGoal.id;
+                        const isSwitching = switchingGoalId === g.id;
+                        return (
+                          <div
+                            key={g.id}
+                            className={cn(
+                              "flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-xs transition-colors",
+                              isCurrent
+                                ? "bg-primary/15 text-primary border border-primary/25 font-semibold"
+                                : "hover:bg-muted/70 text-foreground"
+                            )}
+                          >
+                            <button
+                              type="button"
+                              disabled={isCurrent || isSwitching}
+                              onClick={() => handleSwitchGoal(g.id)}
+                              className="flex-1 text-left min-w-0 flex flex-col"
+                            >
+                              <span className="truncate font-medium flex items-center gap-1.5">
+                                {isSwitching ? (
+                                  <Loader2 className="size-3 animate-spin text-primary shrink-0" />
+                                ) : (
+                                  <span
+                                    className={cn(
+                                      "size-2 rounded-full shrink-0",
+                                      isCurrent ? "bg-primary" : "bg-muted-foreground/40"
+                                    )}
+                                  />
+                                )}
+                                <span className="truncate">{g.title}</span>
+                              </span>
+                              <span className="text-[10px] text-muted-foreground truncate pl-3.5">
+                                {g.domain} · {isCurrent ? "Active Workspace" : "Click to focus"}
+                              </span>
+                            </button>
+
+                            <Link
+                              href={`/goals/${g.id}/graph`}
+                              onClick={() => setGoalMenuOpen(false)}
+                              className="px-2 py-1 rounded border border-border/80 bg-background/80 hover:border-primary/40 text-[10px] font-mono text-muted-foreground hover:text-foreground shrink-0"
+                            >
+                              Curriculum
+                            </Link>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="pt-1 border-t border-border/60">
+                      <Link
+                        href="/goals/new"
+                        onClick={() => setGoalMenuOpen(false)}
+                        className="flex items-center justify-center gap-1.5 w-full rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/25 px-3 py-1.5 text-xs font-semibold transition-colors"
+                      >
+                        <Plus className="size-3.5" />
+                        <span>Start New Learning Goal</span>
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {!isOnline && (
               <span
@@ -214,10 +393,10 @@ export function AppNavigation() {
             )}
           </div>
 
-          {/* Desktop Navigation Links (>= md) - Icon only for unselected, Icon+Label for selected */}
+          {/* Desktop Navigation Links (>= md) - Clear visible labels on all items */}
           <nav
             aria-label="Main Navigation"
-            className="hidden md:flex items-center gap-1 py-1"
+            className="hidden md:flex items-center gap-0.5 py-1 overflow-x-auto no-scrollbar max-w-full"
           >
             {MAIN_NAV_ITEMS.map((item) => {
               const active = item.match(pathname);
@@ -226,27 +405,23 @@ export function AppNavigation() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  title={item.label}
+                  title={item.description || item.label}
                   aria-label={item.label}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "group flex items-center gap-1.5 rounded-lg text-xs font-medium transition-all duration-200 select-none",
+                    "group flex items-center gap-1.5 rounded-lg text-xs font-medium transition-all duration-150 select-none px-2.5 py-1.5 shrink-0",
                     active
-                      ? "bg-primary/15 text-primary border border-primary/25 shadow-xs font-semibold px-3 py-1.5"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/70 p-2"
+                      ? "bg-primary/15 text-primary border border-primary/25 shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/70"
                   )}
                 >
                   <Icon
                     className={cn(
-                      "size-4 transition-transform duration-150 group-hover:scale-110",
-                      active ? "text-primary size-3.5" : "text-muted-foreground group-hover:text-foreground"
+                      "size-3.5 transition-transform duration-150 group-hover:scale-105 shrink-0",
+                      active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                     )}
                   />
-                  {active ? (
-                    <span className="whitespace-nowrap tracking-tight animate-fade-in">{item.label}</span>
-                  ) : (
-                    <span className="sr-only">{item.label}</span>
-                  )}
+                  <span className="whitespace-nowrap tracking-tight">{item.label}</span>
                 </Link>
               );
             })}

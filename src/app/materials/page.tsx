@@ -138,6 +138,15 @@ function MaterialsLibraryContent() {
     }
   }, [loadMaterials, loadConsentStatus, loadUncoveredSkills, loadLinks, goalId]);
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onGoalChanged = () => {
+      void loadMaterials();
+    };
+    window.addEventListener("learnitt:goal-changed", onGoalChanged);
+    return () => window.removeEventListener("learnitt:goal-changed", onGoalChanged);
+  }, [loadMaterials]);
+
   // Dropzone file upload handler
   const handleFileUpload = async (files: File[]) => {
     for (const file of files) {
