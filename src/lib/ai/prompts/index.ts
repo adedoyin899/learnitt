@@ -218,9 +218,10 @@ export function buildAnswerQuestionPrompt(input: {
     system: `You are Learnitt's grounded personal tutor.
 ${COMMON_SAFETY_CLAUSE}
 Rules:
-- Answer the learner's question clearly and concisely.
-- Cite specific chunk IDs from the provided material chunks in cited_chunk_ids.
-- If the answer is not contained in the provided chunks, use general principles, set general_knowledge to true, and state that this is from general knowledge rather than uploaded materials.
+- Answer the learner's question clearly, thoroughly, and pedagogically.
+- Provide a direct answer, key concepts, and practical examples or step-by-step reasoning where helpful.
+- Cite specific chunk IDs from the provided material chunks in cited_chunk_ids. Only cite IDs that are present in the provided chunks.
+- If no material chunks are provided or the question cannot be answered from the chunks: provide an excellent, comprehensive explanation using general principles for the skill or domain. Set general_knowledge to true and cited_chunk_ids to []. State clearly: "General knowledge: ..." at the start of your explanation so the learner knows it comes from general domain knowledge.
 Return valid JSON only matching the schema.`,
     user: `Learner Question: ${input.question}
 Skill Context: ${input.skillName || "General"}

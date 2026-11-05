@@ -531,8 +531,14 @@ export class MockAIProvider implements AIProvider {
           chunkIds.length === 0;
 
         if (isGeneral) {
+          const questionMatch = prompt.match(/Learner Question:\s*([^\n]+)/i);
+          const qText = questionMatch ? questionMatch[1].trim() : "";
+          const coreConcept = qText
+            ? `Regarding "${qText}": this involves core domain architecture and best practices. In database and software engineering systems, optimizing query execution plans, understanding indexing algorithms, and reducing round-trips are primary objectives.`
+            : "This concept is governed by standard domain principles, architectural separation of concerns, and system optimization patterns.";
+
           return {
-            answer: "General knowledge: This topic is not covered in your uploaded materials.",
+            answer: `General knowledge: ${coreConcept} Note: This explanation is based on general domain knowledge rather than your uploaded materials.`,
             cited_chunk_ids: [],
             general_knowledge: true,
           };

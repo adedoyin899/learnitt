@@ -7,12 +7,22 @@ import { EvidenceBadge } from "@/components/evidence/evidence-badge";
 import { CheckInItem } from "./check-in-drawer";
 import { Play, Pause, RotateCcw, ExternalLink, FileText, CheckCircle2, X, Clock, AlertCircle, HelpCircle } from "lucide-react";
 
+export interface SessionResourceItem {
+  id: string;
+  title: string;
+  url: string;
+  domain: string;
+  type?: string | null;
+  estimated_minutes?: number | null;
+}
+
 export interface SessionViewProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: CheckInItem | null;
   material?: { id: string; filename: string; type: string } | null;
   resourceUrl?: string | null;
+  resources?: SessionResourceItem[];
   onOpenCheckIn: () => void;
 }
 
@@ -22,6 +32,7 @@ export function SessionView({
   item,
   material,
   resourceUrl,
+  resources = [],
   onOpenCheckIn,
 }: SessionViewProps) {
   const [secondsElapsed, setSecondsElapsed] = React.useState<number>(0);
@@ -62,11 +73,12 @@ export function SessionView({
     return `${String(remMins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
 
-  const handleStartMaterial = () => {
-    if (material) {
+  const handleStartMaterial = (url?: string) => {
+    const targetUrl = url || resourceUrl;
+    if (material && !url) {
       window.open(`/materials/${material.id}`, "_blank");
-    } else if (resourceUrl) {
-      window.open(resourceUrl, "_blank", "noopener,noreferrer");
+    } else if (targetUrl) {
+      window.open(targetUrl, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -117,12 +129,12 @@ export function SessionView({
 
           {/* Linked Resource / Material Action (Requirement 4: One tap opens linked material or external resource) */}
           <div className="rounded-xl border border-border/70 bg-surface/50 p-4 space-y-3">
-            <span className="text-xs font-medium text-foreground">Linked Learning Material</span>
-            {material ? (
+            <span className="text-xs font-medium text-foreground">Linked Learning Material & Resources</span>
+            {material && (
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleStartMaterial}
+                onClick={() => handleStartMaterial()}
                 className="w-full justify-between h-12 text-xs border-primary/30 hover:border-primary bg-primary/5 hover:bg-primary/10"
               >
                 <span className="flex items-center gap-2 truncate">
@@ -131,11 +143,33 @@ export function SessionView({
                 </span>
                 <ExternalLink className="size-3.5 text-muted-foreground shrink-0 ml-2" />
               </Button>
-            ) : resourceUrl ? (
+            )}
+
+            {resources.length > 0 ? (
+              <div className="space-y-2">
+                {resources.map((res) => (
+                  <Button
+                    key={res.id || res.url}
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleStartMaterial(res.url)}
+                    className="w-full justify-between h-auto py-2.5 px-3 text-xs border-primary/20 hover:border-primary/50 bg-background hover:bg-primary/5 text-left"
+                  >
+                    <div className="flex flex-col min-w-0 pr-2">
+                      <span className="font-semibold text-foreground truncate">{res.title || res.domain}</span>
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        {res.domain} {res.estimated_minutes ? `· ${res.estimated_minutes} min` : ""}
+                      </span>
+                    </div>
+                    <ExternalLink className="size-3.5 text-muted-foreground shrink-0 ml-2" />
+                  </Button>
+                ))}
+              </div>
+            ) : resourceUrl && !material ? (
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleStartMaterial}
+                onClick={() => handleStartMaterial()}
                 className="w-full justify-between h-12 text-xs border-primary/30 hover:border-primary bg-primary/5 hover:bg-primary/10"
               >
                 <span className="flex items-center gap-2 truncate">
@@ -144,7 +178,7 @@ export function SessionView({
                 </span>
                 <span className="text-[10px] font-mono text-muted-foreground">New tab</span>
               </Button>
-            ) : (
+            ) : !material && (
               <p className="text-xs text-muted-foreground">
                 Follow your study guide and practice exercises for this skill.
               </p>

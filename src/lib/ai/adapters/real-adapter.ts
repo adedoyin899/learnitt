@@ -1,4 +1,5 @@
 import { AIProvider, AIStructuredArgs, AIStructuredResponse } from "../types";
+import { AI_CONFIG } from "@/lib/config/ai";
 
 export interface RealAdapterOptions {
   id?: string;
@@ -33,7 +34,10 @@ export class RealAIProvider implements AIProvider {
   }
 
   private async callGemini<T>(args: AIStructuredArgs): Promise<AIStructuredResponse<T>> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.modelName)}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
+    const modelsToTry = [this.modelName];
+    if (AI_CONFIG.GEMINI_FALLBACK_MODEL && this.modelName !== AI_CONFIG.GEMINI_FALLBACK_MODEL) {
+      modelsToTry.push(AI_CONFIG.GEMINI_FALLBACK_MODEL);
+    }
 
     const promptText = `${args.system}\n\nTask: ${args.task}\n\nUser Context:\n${args.user}\n\nRespond ONLY with valid JSON conforming to the requested schema.`;
 
@@ -51,48 +55,67 @@ export class RealAIProvider implements AIProvider {
       },
     };
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-    });
+    let lastError: Error | null = null;
+    for (const model of modelsToTry) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
 
-    if (res.status === 429) {
-      const err = new Error(`Gemini rate limit exceeded (HTTP 429) for model ${this.modelName}`);
-      (err as unknown as { status: number; isRateLimit: boolean }).status = 429;
-      (err as unknown as { status: number; isRateLimit: boolean }).isRateLimit = true;
-      throw err;
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        });
+
+        if (res.status === 429) {
+          const err = new Error(`Gemini rate limit exceeded (HTTP 429) for model ${model}`);
+          (err as unknown as { status: number; isRateLimit: boolean }).status = 429;
+          (err as unknown as { status: number; isRateLimit: boolean }).isRateLimit = true;
+          lastError = err;
+          continue;
+        }
+
+        if (res.status === 503 || res.status === 502 || res.status === 500) {
+          const errText = await res.text();
+          lastError = new Error(`Gemini provider temporary error (HTTP ${res.status}) on ${model}: ${errText}`);
+          continue;
+        }
+
+        if (!res.ok) {
+          const errText = await res.text();
+          const err = new Error(`Gemini provider error (HTTP ${res.status}): ${errText}`);
+          (err as unknown as { status: number }).status = res.status;
+          lastError = err;
+          continue;
+        }
+
+        const json = await res.json();
+        const candidateText =
+          json.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+
+        let parsedData: T;
+        try {
+          parsedData = JSON.parse(candidateText) as T;
+        } catch {
+          throw new Error(`Gemini returned unparseable JSON: ${candidateText.slice(0, 200)}`);
+        }
+
+        const inputTokens = json.usageMetadata?.promptTokenCount || Math.floor(promptText.length / 4);
+        const outputTokens = json.usageMetadata?.candidatesTokenCount || Math.floor(candidateText.length / 4);
+
+        return {
+          data: parsedData,
+          usage: {
+            inputTokens,
+            outputTokens,
+          },
+          modelVersion: model,
+        };
+      } catch (err: any) {
+        lastError = err;
+      }
     }
 
-    if (!res.ok) {
-      const errText = await res.text();
-      const err = new Error(`Gemini provider error (HTTP ${res.status}): ${errText}`);
-      (err as unknown as { status: number }).status = res.status;
-      throw err;
-    }
-
-    const json = await res.json();
-    const candidateText =
-      json.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-
-    let parsedData: T;
-    try {
-      parsedData = JSON.parse(candidateText) as T;
-    } catch {
-      throw new Error(`Gemini returned unparseable JSON: ${candidateText.slice(0, 200)}`);
-    }
-
-    const inputTokens = json.usageMetadata?.promptTokenCount || Math.floor(promptText.length / 4);
-    const outputTokens = json.usageMetadata?.candidatesTokenCount || Math.floor(candidateText.length / 4);
-
-    return {
-      data: parsedData,
-      usage: {
-        inputTokens,
-        outputTokens,
-      },
-      modelVersion: this.modelName,
-    };
+    throw lastError || new Error("Gemini generation failed across all attempted models");
   }
 
   private async callOpenAI<T>(args: AIStructuredArgs): Promise<AIStructuredResponse<T>> {

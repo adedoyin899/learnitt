@@ -1,5 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { discoverResourcesForGoal, approveResource } from "@/lib/discovery/service";
+
+export interface TodayResource {
+  id: string;
+  title: string;
+  url: string;
+  domain: string;
+  type: string | null;
+  estimated_minutes: number | null;
+  relevance: number | null;
+  approval?: string;
+}
 
 export interface TodayResponse {
   has_goal: boolean;
@@ -39,6 +51,8 @@ export interface TodayResponse {
       type: string;
     } | null;
     resource_url?: string | null;
+    resource?: TodayResource | null;
+    resources?: TodayResource[];
     check_in?: {
       id: string;
       outcome: string;
@@ -62,6 +76,7 @@ export interface TodayResponse {
       created_at: string;
     } | null;
   } | null;
+  resources?: TodayResource[];
   is_mvd_complete: boolean;
   is_planned_complete: boolean;
   total_planned_minutes_today: number;
@@ -222,6 +237,14 @@ export async function GET(req: NextRequest) {
 
   const materialMap = new Map((materials || []).map((m) => [m.id, m]));
 
+  // 4b. Fetch resources if attached
+  const resourceIds = todayItems.map((it) => it.resource_id).filter(Boolean) as string[];
+  const { data: linkedResources } = resourceIds.length > 0
+    ? await supabase.from("resources").select("*").in("id", resourceIds)
+    : { data: [] };
+
+  const resourceMap = new Map((linkedResources || []).map((r) => [r.id, r]));
+
   // 5. Fetch check-ins for today's items
   const itemIds = todayItems.map((it) => it.id);
   const { data: checkIns } = await supabase
@@ -248,6 +271,111 @@ export async function GET(req: NextRequest) {
   const reviewCheckIn = reviewRow ? checkInMap.get(reviewRow.id) : null;
 
   const primaryMaterial = primaryRow?.material_id ? materialMap.get(primaryRow.material_id) : null;
+
+  // Fetch supplementary / curated resources for primary skill
+  let supplementaryResources: TodayResource[] = [];
+
+  if (primaryRow?.skill_id) {
+    const { data: skillRes } = await supabase
+      .from("resources")
+      .select("id, title, url, domain, type, estimated_minutes, relevance, approval")
+      .eq("skill_id", primaryRow.skill_id)
+      .eq("goal_id", activeGoal.id)
+      .neq("approval", "rejected")
+      .order("relevance", { ascending: false })
+      .limit(4);
+
+    if (skillRes && skillRes.length > 0) {
+      supplementaryResources = skillRes.map((r) => ({
+        id: r.id,
+        title: r.title || r.domain,
+        url: r.url,
+        domain: r.domain,
+        type: r.type,
+        estimated_minutes: r.estimated_minutes,
+        relevance: r.relevance,
+        approval: r.approval,
+      }));
+    }
+  }
+
+  // If no skill-specific resources exist, check goal-level resources
+  if (supplementaryResources.length === 0 && activeGoal?.id) {
+    const { data: goalRes } = await supabase
+      .from("resources")
+      .select("id, title, url, domain, type, estimated_minutes, relevance, approval")
+      .eq("goal_id", activeGoal.id)
+      .neq("approval", "rejected")
+      .order("relevance", { ascending: false })
+      .limit(4);
+
+    if (goalRes && goalRes.length > 0) {
+      supplementaryResources = goalRes.map((r) => ({
+        id: r.id,
+        title: r.title || r.domain,
+        url: r.url,
+        domain: r.domain,
+        type: r.type,
+        estimated_minutes: r.estimated_minutes,
+        relevance: r.relevance,
+        approval: r.approval,
+      }));
+    }
+  }
+
+  // If still empty and we have a primarySkill, auto-discover resources for this skill
+  if (supplementaryResources.length === 0 && primarySkill && activeGoal) {
+    try {
+      const discResult = await discoverResourcesForGoal({
+        goalId: activeGoal.id,
+        ownerId: user.id,
+        dbClient: supabase,
+        skillId: primarySkill.id,
+        maxSkillsToDiscover: 1,
+      });
+
+      if (discResult.resourcesCreated.length > 0) {
+        // Auto-approve top created resource and attach to primary plan item
+        const topRes = discResult.resourcesCreated[0];
+        try {
+          await approveResource(topRes.id, user.id, supabase);
+        } catch {
+          // ignore if already approved
+        }
+
+        const { data: newlyFound } = await supabase
+          .from("resources")
+          .select("id, title, url, domain, type, estimated_minutes, relevance, approval")
+          .eq("skill_id", primarySkill.id)
+          .neq("approval", "rejected")
+          .order("relevance", { ascending: false })
+          .limit(4);
+
+        if (newlyFound && newlyFound.length > 0) {
+          supplementaryResources = newlyFound.map((r) => ({
+            id: r.id,
+            title: r.title || r.domain,
+            url: r.url,
+            domain: r.domain,
+            type: r.type,
+            estimated_minutes: r.estimated_minutes,
+            relevance: r.relevance,
+            approval: r.approval,
+          }));
+        }
+      }
+    } catch (discErr) {
+      console.warn("[TodayRoute] Auto discovery skipped:", discErr);
+    }
+  }
+
+  const primaryLinkedRes = primaryRow?.resource_id ? resourceMap.get(primaryRow.resource_id) : null;
+  const primaryResource =
+    primaryLinkedRes ||
+    supplementaryResources.find((r) => r.approval === "approved") ||
+    supplementaryResources[0] ||
+    null;
+  const primaryResourceUrl = primaryResource?.url || null;
 
   // Distinct completion states (Prompt Requirement 3: "Show MVD complete separately from planned complete")
   const isPlannedComplete = primaryCheckIn?.outcome === "done" || primaryRow?.status === "done";
@@ -312,11 +440,27 @@ export async function GET(req: NextRequest) {
           mvd_task: primarySkill?.mvd_task || "Review core concept and write 3 summary bullets.",
           status: primaryRow.status,
           evidence_level: primarySkill?.evidence_level || 0,
-          material: primaryMaterial ? {
-            id: primaryMaterial.id,
-            filename: primaryMaterial.filename,
-            type: primaryMaterial.type,
-          } : null,
+          material: primaryMaterial
+            ? {
+                id: primaryMaterial.id,
+                filename: primaryMaterial.filename,
+                type: primaryMaterial.type,
+              }
+            : null,
+          resource_url: primaryResourceUrl,
+          resource: primaryResource
+            ? {
+                id: primaryResource.id,
+                title: primaryResource.title,
+                url: primaryResource.url,
+                domain: primaryResource.domain,
+                type: primaryResource.type,
+                estimated_minutes: primaryResource.estimated_minutes,
+                relevance: primaryResource.relevance,
+                approval: primaryResource.approval,
+              }
+            : null,
+          resources: supplementaryResources,
           check_in: primaryCheckIn || null,
         }
       : null,
@@ -341,6 +485,7 @@ export async function GET(req: NextRequest) {
       total_skills: totalSkills || 0,
       verified_skills: verifiedSkills || 0,
     },
+    resources: supplementaryResources,
     upcoming_items: (upcomingItems || []).map((u) => ({
       id: u.id,
       scheduled_date: typeof u.scheduled_date === "object" ? (u.scheduled_date as Date).toISOString().split("T")[0] : String(u.scheduled_date).split("T")[0],

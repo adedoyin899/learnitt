@@ -13,6 +13,9 @@ import {
   Sparkles,
   Zap,
   Plus,
+  BookOpen,
+  ExternalLink,
+  HelpCircle,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -310,7 +313,7 @@ function PlanPageInner() {
         ) : (
           /* Main Views: Tabs between Day List and Week View */
           <Tabs defaultValue="days" className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <TabsList>
                 <TabsTrigger value="days">
                   <Layers className="size-3.5 mr-1.5" />
@@ -322,8 +325,19 @@ function PlanPageInner() {
                 </TabsTrigger>
               </TabsList>
 
-              <div className="text-xs font-mono text-muted-foreground">
-                {items.length} sessions planned
+              <div className="flex items-center gap-2.5 flex-wrap">
+                {selectedGoalId && (
+                  <Link
+                    href={`/goals/${selectedGoalId}/resources`}
+                    className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
+                  >
+                    <BookOpen className="size-3.5" />
+                    <span>Resources</span>
+                  </Link>
+                )}
+                <div className="text-xs font-mono text-muted-foreground">
+                  {items.length} sessions
+                </div>
               </div>
             </div>
 
@@ -407,7 +421,7 @@ function PlanPageInner() {
                             {/* MVD Snippet (PRD 5.2 Step 5) */}
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
                               <Zap className="size-3 text-amber-400 shrink-0" />
-                              <span className="text-amber-400/90 font-medium">
+                              <span className="text-amber-400/90 font-medium shrink-0">
                                 MVD ({item.mvd_minutes}m):
                               </span>
                               <span className="truncate">{item.mvd_task}</span>

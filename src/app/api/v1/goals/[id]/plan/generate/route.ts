@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { schedule } from "@/lib/planner/scheduler";
+import { discoverResourcesForGoal, approveResource } from "@/lib/discovery/service";
 import {
   PlannerGoal,
   PlannerPrereq,
@@ -156,6 +157,34 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     if (insertErr) {
       return NextResponse.json({ error: insertErr.message }, { status: 500 });
+    }
+
+    // Auto-provision complementary learning resources for skills in this plan if none exist
+    try {
+      const { count: existingCount } = await supabase
+        .from("resources")
+        .select("id", { count: "exact", head: true })
+        .eq("goal_id", id);
+
+      if (!existingCount || existingCount === 0) {
+        const discRes = await discoverResourcesForGoal({
+          goalId: id,
+          ownerId: user.id,
+          dbClient: supabase,
+          maxSkillsToDiscover: 3,
+        });
+
+        // Auto-approve top vetted resources and attach them to plan items
+        for (const res of discRes.resourcesCreated) {
+          try {
+            await approveResource(res.id, user.id, supabase);
+          } catch {
+            // Ignore if already approved
+          }
+        }
+      }
+    } catch (discErr) {
+      console.warn("[PlanGenerate] Resource auto-provisioning skipped:", discErr);
     }
   }
 

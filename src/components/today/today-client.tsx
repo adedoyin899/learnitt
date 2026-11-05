@@ -39,6 +39,9 @@ import {
   Plus,
   Layers,
   Check,
+  BookOpen,
+  ExternalLink,
+  HelpCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -63,6 +66,38 @@ export function TodayClient({ initialData }: TodayClientProps) {
 
   // Offline status & Outbox sync hook (PRD Section 10 & Phase L6)
   const { isOnline, pendingCount, isSyncing, statusText, syncNow } = useOfflineSync();
+
+  const primaryItem = data?.primary_item;
+  const todayResources = React.useMemo(() => {
+    if (!data) return [];
+    const list: Array<{
+      id: string;
+      title: string;
+      url: string;
+      domain: string;
+      type?: string | null;
+      estimated_minutes?: number | null;
+    }> = [];
+    const seen = new Set<string>();
+
+    if (primaryItem?.resource?.url) {
+      list.push(primaryItem.resource);
+      seen.add(primaryItem.resource.url);
+    }
+    for (const r of (primaryItem as any)?.resources || []) {
+      if (r?.url && !seen.has(r.url)) {
+        list.push(r);
+        seen.add(r.url);
+      }
+    }
+    for (const r of data.resources || []) {
+      if (r?.url && !seen.has(r.url)) {
+        list.push(r);
+        seen.add(r.url);
+      }
+    }
+    return list;
+  }, [primaryItem, data]);
 
   // 1. Initial Load: Read from Dexie first (<1s first paint), then refresh from server
   React.useEffect(() => {
@@ -702,6 +737,84 @@ export function TodayClient({ initialData }: TodayClientProps) {
                 </div>
               </div>
             )}
+
+            {/* Recommended Learning Resources & Reading */}
+            {todayResources.length > 0 && (
+              <div className="rounded-xl border border-border/80 bg-card p-4 sm:p-5 space-y-3 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="size-4 text-primary" />
+                    <h3 className="text-xs font-mono uppercase tracking-wider font-semibold text-foreground">
+                      Study Materials & Resources
+                    </h3>
+                  </div>
+                  <Link
+                    href={selectedGoalId ? `/goals/${selectedGoalId}/resources` : "/plan"}
+                    className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
+                  >
+                    <span>Goal Resources</span>
+                    <ExternalLink className="size-3" />
+                  </Link>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  Curated reading and documentation for your daily target (<strong className="text-foreground">{primary?.skill_name}</strong>):
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  {todayResources.map((res) => (
+                    <a
+                      key={res.id || res.url}
+                      href={res.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex flex-col justify-between p-3 rounded-lg border border-border/60 bg-surface/50 hover:bg-surface hover:border-primary/40 transition-all text-left"
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-background border border-border/50 text-muted-foreground group-hover:text-primary font-medium">
+                            {res.type || "Guide"}
+                          </span>
+                          {res.estimated_minutes && (
+                            <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
+                              <Clock className="size-2.5" />
+                              {res.estimated_minutes}m
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="text-xs font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors">
+                          {res.title || res.domain}
+                        </h4>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-2.5 border-t border-border/40 mt-2">
+                        <span className="truncate text-muted-foreground/80 font-mono text-[10px]">
+                          {res.domain}
+                        </span>
+                        <span className="text-primary font-medium text-[11px] flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+                          Read Now <ExternalLink className="size-2.5 ml-0.5" />
+                        </span>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+
+                {primary?.skill_id && (
+                  <div className="pt-2 flex items-center justify-between text-xs border-t border-border/40">
+                    <span className="text-muted-foreground text-[11px]">
+                      Need help understanding these concepts?
+                    </span>
+                    <Link
+                      href={`/ask?skill_id=${primary.skill_id}`}
+                      className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
+                    >
+                      <HelpCircle className="size-3.5" />
+                      <span>Ask AI Tutor →</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </>
       ) : (
@@ -856,6 +969,7 @@ export function TodayClient({ initialData }: TodayClientProps) {
         item={activeCheckInItem}
         material={primary?.material}
         resourceUrl={primary?.resource_url}
+        resources={todayResources}
         onOpenCheckIn={() => {
           setIsSessionOpen(false);
           setIsCheckInOpen(true);

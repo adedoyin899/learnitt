@@ -50,14 +50,15 @@ export async function executeAITaskWithRetry<T>(
   const schema = getTaskSchema(params.task);
 
   // 0. Consent check for material-grounded tasks (PRD I3 & Prompt Requirement 7)
+  const hasItems = (val: unknown) =>
+    Array.isArray(val) ? val.length > 0 : Boolean(val);
+
   const isMaterialBased =
     params.task === "link_materials" ||
-    Boolean(
-      params.payload?.materials ||
-        params.payload?.material_ids ||
-        params.payload?.chunks ||
-        params.payload?.use_materials
-    );
+    hasItems(params.payload?.materials) ||
+    hasItems(params.payload?.material_ids) ||
+    hasItems(params.payload?.chunks) ||
+    Boolean(params.payload?.use_materials);
 
   if (isMaterialBased && params.dbClient && params.ownerId) {
     await assertMaterialConsent(params.ownerId, params.dbClient);

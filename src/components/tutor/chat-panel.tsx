@@ -418,6 +418,14 @@ export function ChatPanel({
             );
           })
         )}
+        {isSubmitting && (
+          <div className="flex justify-start">
+            <div className="rounded-xl px-4 py-3 bg-muted/60 text-muted-foreground text-xs flex items-center gap-2 border border-border/40 shadow-sm animate-pulse">
+              <Sparkles className="h-3.5 w-3.5 text-primary animate-spin" />
+              <span>AI Tutor is thinking and reviewing your context...</span>
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
