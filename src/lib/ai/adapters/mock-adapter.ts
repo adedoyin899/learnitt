@@ -25,6 +25,11 @@ export class MockAIProvider implements AIProvider {
 
   private getDeterministicFixture(task: AITask, prompt: string): unknown {
     const isHealth = prompt.toLowerCase().includes("health") || prompt.toLowerCase().includes("biostatistics");
+    const isArt =
+      prompt.toLowerCase().includes("art") ||
+      prompt.toLowerCase().includes("paint") ||
+      prompt.toLowerCase().includes("draw") ||
+      prompt.toLowerCase().includes("illustration");
 
     switch (task) {
       case "skill_graph":
@@ -211,6 +216,145 @@ export class MockAIProvider implements AIProvider {
           };
         }
 
+        if (isArt) {
+          return {
+            skills: [
+              {
+                id: "sk_art_01",
+                name: "Color Theory & Harmonies",
+                description: "Color wheels, complementary contrasts, and hue-saturation-value relationships.",
+                prereq_ids: [],
+                estimated_minutes: { min: 60, max: 120 },
+                difficulty: 1,
+                verification_type: "recall",
+                mvd_minutes: 15,
+                mvd_task: "Mix a 12-step color wheel identifying complementary and analogous pairs.",
+              },
+              {
+                id: "sk_art_02",
+                name: "Drawing Fundamentals & Gesture",
+                description: "Mark-making, line weight, proportion, and dynamic gesture capture.",
+                prereq_ids: [],
+                estimated_minutes: { min: 60, max: 120 },
+                difficulty: 1,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: "Complete five 2-minute gesture drawings focusing on continuous line flow.",
+              },
+              {
+                id: "sk_art_03",
+                name: "Perspective & Compositional Space",
+                description: "One and two-point perspective, vanishing points, and atmospheric depth.",
+                prereq_ids: ["sk_art_02"],
+                estimated_minutes: { min: 90, max: 150 },
+                difficulty: 2,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: "Construct an interior grid using two vanishing points and accurate scale.",
+              },
+              {
+                id: "sk_art_04",
+                name: "Chiaroscuro & Value Contrast",
+                description: "Form modeling, light source direction, cast shadows, and 5-value scale.",
+                prereq_ids: ["sk_art_02", "sk_art_03"],
+                estimated_minutes: { min: 90, max: 180 },
+                difficulty: 2,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: "Render a geometric sphere using a 5-step value gradient with core shadow.",
+              },
+              {
+                id: "sk_art_05",
+                name: "Materials, Pigments & Brushwork",
+                description: "Selecting brushes, supports, priming gesso, and paint consistency.",
+                prereq_ids: [],
+                estimated_minutes: { min: 60, max: 90 },
+                difficulty: 1,
+                verification_type: "recall",
+                mvd_minutes: 15,
+                mvd_task: "Prepare a primed surface and test 4 distinct brush strokes with medium.",
+              },
+              {
+                id: "sk_art_06",
+                name: "Color Temperature & Palette Mixing",
+                description: "Warm vs cool variants of primary colors, neutral grays, and skin tones.",
+                prereq_ids: ["sk_art_01", "sk_art_05"],
+                estimated_minutes: { min: 90, max: 150 },
+                difficulty: 2,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: "Mix three chromatic grays using warm and cool primaries without tube black.",
+              },
+              {
+                id: "sk_art_07",
+                name: "Underpainting & Imprimatura",
+                description: "Establishing composition, tonal structure, and warm ground washes.",
+                prereq_ids: ["sk_art_04", "sk_art_06"],
+                estimated_minutes: { min: 90, max: 180 },
+                difficulty: 2,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: "Execute an oil/acrylic imprimatura wash and wipe out high-key highlights.",
+              },
+              {
+                id: "sk_art_08",
+                name: "Glazing & Layering Techniques",
+                description: "Fat-over-lean rules, transparent glazing, scumbling, and impasto highlights.",
+                prereq_ids: ["sk_art_07"],
+                estimated_minutes: { min: 120, max: 210 },
+                difficulty: 3,
+                verification_type: "applied",
+                mvd_minutes: 20,
+                mvd_task: "Apply two translucent glaze layers over a dried monochrome underpainting.",
+              },
+              {
+                id: "sk_art_09",
+                name: "Figure Drawing & Anatomical Proportions",
+                description: "Skeletal landmarks, head-height measurements, and muscular forms.",
+                prereq_ids: ["sk_art_02", "sk_art_04"],
+                estimated_minutes: { min: 120, max: 240 },
+                difficulty: 3,
+                verification_type: "applied",
+                mvd_minutes: 20,
+                mvd_task: "Draw a standing figure establishing the 7.5 head proportion guidelines.",
+              },
+              {
+                id: "sk_art_10",
+                name: "Still Life & Edge Control",
+                description: "Hard, soft, lost, and found edges across varying surface textures.",
+                prereq_ids: ["sk_art_06", "sk_art_07"],
+                estimated_minutes: { min: 90, max: 180 },
+                difficulty: 2,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: "Paint a simple still life demonstrating distinct soft and lost edges.",
+              },
+              {
+                id: "sk_art_11",
+                name: "Plein Air & Direct Observation",
+                description: "Rapid plein air color notation, changing light conditions, and simplification.",
+                prereq_ids: ["sk_art_08", "sk_art_10"],
+                estimated_minutes: { min: 120, max: 240 },
+                difficulty: 3,
+                verification_type: "applied",
+                mvd_minutes: 20,
+                mvd_task: "Complete a 30-minute outdoor landscape study capturing primary light direction.",
+              },
+              {
+                id: "sk_art_12",
+                name: "Master Copy & Finished Capstone Work",
+                description: "Synthesizing drawing, value, color, edge control, and personal expression.",
+                prereq_ids: ["sk_art_08", "sk_art_09", "sk_art_11"],
+                estimated_minutes: { min: 180, max: 360 },
+                difficulty: 4,
+                verification_type: "artifact",
+                mvd_minutes: 25,
+                mvd_task: "Produce an original finished capstone painting incorporating underpainting and glazing.",
+              },
+            ],
+          };
+        }
+
         return {
           skills: [
             {
@@ -382,13 +526,29 @@ export class MockAIProvider implements AIProvider {
         };
       }
 
-      case "search_queries":
+      case "search_queries": {
+        const skillMatch = prompt.match(/Skill:\s*([^\n\r]+)/i);
+        const skill = skillMatch ? skillMatch[1].trim() : "";
+        const levelMatch = prompt.match(/Level:\s*([^\n\r]+)/i);
+        const level = levelMatch ? levelMatch[1].trim() : "beginner";
+
+        if (!skill || skill.toLowerCase().includes("sql") || prompt.includes("SQL fundamentals")) {
+          return {
+            queries: [
+              "SQL fundamentals window functions tutorial",
+              "PostgreSQL indexing best practices beginner",
+            ],
+          };
+        }
+
         return {
           queries: [
-            "SQL fundamentals window functions tutorial",
-            "PostgreSQL indexing best practices beginner",
+            `${skill} ${level} practical guide tutorial`,
+            `${skill} core principles documentation`,
+            `${skill} best practices guide`,
           ],
         };
+      }
 
       case "classify_resource": {
         try {
