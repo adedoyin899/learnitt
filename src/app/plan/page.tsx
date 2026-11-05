@@ -426,6 +426,22 @@ function PlanPageInner() {
                               </span>
                               <span className="truncate">{item.mvd_task}</span>
                             </div>
+
+                            {/* Direct Study Guide / Resource */}
+                            {item.resource_url && (
+                              <div className="flex items-center gap-1.5 text-xs text-primary/90 font-medium">
+                                <BookOpen className="size-3 shrink-0" />
+                                <a
+                                  href={item.resource_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="hover:underline flex items-center gap-1 truncate"
+                                >
+                                  <span>Guide: {item.resource_title || "Study Resource"}</span>
+                                  <ExternalLink className="size-2.5 shrink-0" />
+                                </a>
+                              </div>
+                            )}
                           </div>
 
                           {/* Actions */}

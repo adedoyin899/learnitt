@@ -70,6 +70,8 @@ export interface PlannedItem {
   plan_version: number;
   material_id?: string | null;
   resource_id?: string | null;
+  resource_url?: string | null;
+  resource_title?: string | null;
   rescheduled_from?: string | null;
 }
 

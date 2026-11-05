@@ -54,9 +54,23 @@ export async function GET(req: NextRequest) {
 
   const skillMap = new Map((skillsData || []).map((s) => [s.id, s]));
 
-  // Map skill name to item
+  // Fetch approved resources linked to plan items
+  const resourceIds = (items || []).map((it) => it.resource_id).filter(Boolean);
+  let resourceMap = new Map<string, { id: string; title: string | null; url: string; domain: string }>();
+  if (resourceIds.length > 0) {
+    const { data: resData } = await supabase
+      .from("resources")
+      .select("id, title, url, domain")
+      .in("id", resourceIds);
+    if (resData) {
+      resourceMap = new Map(resData.map((r) => [r.id, r]));
+    }
+  }
+
+  // Map skill and resource to item
   const formattedItems: PlannedItem[] = (items || []).map((it) => {
     const skillData = it.skill_id ? skillMap.get(it.skill_id) : null;
+    const resourceData = it.resource_id ? resourceMap.get(it.resource_id) : null;
     return {
       id: it.id,
       skill_id: it.skill_id,
@@ -71,6 +85,8 @@ export async function GET(req: NextRequest) {
       plan_version: it.plan_version,
       material_id: it.material_id,
       resource_id: it.resource_id,
+      resource_url: resourceData?.url || null,
+      resource_title: resourceData?.title || null,
       rescheduled_from: it.rescheduled_from ? (typeof it.rescheduled_from === "object" ? it.rescheduled_from.toISOString().split("T")[0] : String(it.rescheduled_from).split("T")[0]) : null,
     };
   });

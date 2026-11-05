@@ -36,7 +36,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 
   // 2. Fetch resources for this goal
-  const { data: resources, error: resErr } = await supabase
+  let { data: resources, error: resErr } = await supabase
     .from("resources")
     .select("*")
     .eq("goal_id", goalId)
@@ -56,6 +56,36 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     .select("id, name, difficulty")
     .eq("goal_id", goalId)
     .eq("owner_id", user.id);
+
+  if ((!resources || resources.length === 0) && skills && skills.length > 0) {
+    try {
+      const { discoverResourcesForGoal, approveResource } = await import("@/lib/discovery/service");
+      const disc = await discoverResourcesForGoal({
+        goalId,
+        ownerId: user.id,
+        dbClient: supabase,
+        maxSkillsToDiscover: 3,
+      });
+      for (const r of disc.resourcesCreated) {
+        try {
+          await approveResource(r.id, user.id, supabase);
+        } catch {
+          // ignore
+        }
+      }
+      const { data: refreshed } = await supabase
+        .from("resources")
+        .select("*")
+        .eq("goal_id", goalId)
+        .eq("owner_id", user.id)
+        .order("found_at", { ascending: false });
+      if (refreshed) {
+        resources = refreshed;
+      }
+    } catch {
+      // Continue gracefully
+    }
+  }
 
   const skillsMap = new Map<string, { id: string; name: string; level: string }>();
   for (const s of skills || []) {

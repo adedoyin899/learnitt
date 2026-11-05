@@ -372,17 +372,17 @@ export async function approveResource(
       .eq("goal_id", resource.goal_id)
       .eq("skill_id", resource.skill_id)
       .is("resource_id", null)
-      .order("scheduled_date", { ascending: true })
-      .limit(1);
+      .order("scheduled_date", { ascending: true });
 
     if (planItems && planItems.length > 0) {
-      const targetPlanItemId = planItems[0].id;
-      await dbClient
-        .from("plan_items")
-        .update({ resource_id: resource.id })
-        .eq("id", targetPlanItemId);
+      for (const item of planItems) {
+        await dbClient
+          .from("plan_items")
+          .update({ resource_id: resource.id })
+          .eq("id", item.id);
 
-      attachedPlanItemIds.push(targetPlanItemId);
+        attachedPlanItemIds.push(item.id);
+      }
     }
   }
 
