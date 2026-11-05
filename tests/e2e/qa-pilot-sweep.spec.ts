@@ -10,6 +10,9 @@ test.describe("L13 Full QA Sweep · All Screens, Themes, Viewports & Network Sta
         path: "/",
       },
     ]);
+    await context.addInitScript(() => {
+      window.localStorage.setItem("learnitt_product_tour_completed_v1", "true");
+    });
   });
 
   const VIEWPORTS = [

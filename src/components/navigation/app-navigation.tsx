@@ -190,9 +190,11 @@ export function AppNavigation() {
             <Link
               href="/today"
               className="flex items-center gap-2.5 group rounded-lg p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              aria-label="Learnitt Home"
             >
-              <div className="size-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-mono text-xs font-bold shadow-xs transition-transform duration-200 group-hover:scale-105">
+              <div
+                aria-hidden="true"
+                className="size-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-mono text-xs font-bold shadow-xs transition-transform duration-200 group-hover:scale-105"
+              >
                 L
               </div>
               <span className="font-mono text-sm tracking-wider uppercase font-semibold text-foreground">

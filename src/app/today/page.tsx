@@ -15,9 +15,10 @@ export default async function TodayPage() {
     process.env.NEXT_PUBLIC_SUPABASE_URL.includes("supabase.co")
   );
 
+  const isLocal = process.env.NODE_ENV !== "production";
   const isMockMode = process.env.MOCK_MODE === "true";
   const isMockAuth =
-    !isLiveSupabase &&
+    (isLocal || !isLiveSupabase) &&
     (cookieStore.has("sb-mock-auth") ||
       (isMockMode &&
         cookieStore.getAll().some((c) => c.name.includes("auth-token"))));

@@ -110,6 +110,7 @@ export function ProductTourModal() {
   // Check if user has already seen the tour
   React.useEffect(() => {
     if (typeof window === "undefined") return;
+    if (document.cookie.includes("sb-mock-auth")) return;
     const completed = localStorage.getItem(TOUR_STORAGE_KEY);
     if (!completed) {
       // Auto-open on first visit after a slight delay

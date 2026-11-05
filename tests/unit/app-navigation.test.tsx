@@ -56,8 +56,9 @@ describe("AppNavigation Component", () => {
     render(<AppNavigation />);
 
     // Brand logo
-    expect(screen.getByLabelText("Learnitt Home")).toBeInTheDocument();
-    expect(screen.getByText("Learnitt")).toBeInTheDocument();
+    const homeLink = screen.getByRole("link", { name: /learnitt/i });
+    expect(homeLink).toBeInTheDocument();
+    expect(homeLink).toHaveAttribute("href", "/today");
 
     // Main navigation landmarks
     const navs = screen.getAllByRole("navigation");

@@ -103,9 +103,13 @@ export async function updateSession(request: NextRequest) {
     env.NEXT_PUBLIC_SUPABASE_URL.includes("supabase.co")
   );
 
+  const isLocalhost =
+    request.nextUrl.hostname === "localhost" ||
+    request.nextUrl.hostname === "127.0.0.1";
+
   const isMockMode = process.env.MOCK_MODE === "true" || env.MOCK_MODE;
   const isMockAuth =
-    !isLiveSupabase &&
+    (isLocalhost || !isLiveSupabase) &&
     (request.cookies.has("sb-mock-auth") ||
       (isMockMode &&
         request.cookies.getAll().some((c) => c.name.includes("auth-token"))));

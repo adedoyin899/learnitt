@@ -11,6 +11,9 @@ test.describe("L12 Accessibility & Usability · Automated Axe, Touch Targets & M
         path: "/",
       },
     ]);
+    await context.addInitScript(() => {
+      window.localStorage.setItem("learnitt_product_tour_completed_v1", "true");
+    });
   });
 
   test("Screen S16 Settings passes axe audit with 0 serious or critical violations", async ({

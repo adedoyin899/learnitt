@@ -219,7 +219,9 @@ export function ChatPanel({
     router.push(`/journal?prefill=${encoded}${skillParam}`);
   };
 
-  const isHealthGoal = Boolean(conversation.goals?.health_flag);
+  const isHealthGoal = Boolean(
+    conversation.goals?.health_flag || (conversation as any).is_health_goal
+  );
 
   return (
     <div className="flex flex-col h-[calc(100vh-5rem)] max-w-4xl mx-auto border rounded-xl bg-card shadow-sm overflow-hidden">
