@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { MockSearchProvider } from "@/lib/search/mock-provider";
 import { MockAIProvider } from "@/lib/ai/adapters/mock-adapter";
 import { discoverResourcesForGoal, approveResource } from "@/lib/discovery/service";
-import { assertSearchSourced, normalizeUrl } from "@/lib/discovery/vetting";
 
 class InMemoryDbAdapter {
   public tables: Record<string, any[]> = {
@@ -128,6 +127,8 @@ describe("Dynamic Field Goals & Learning Resources (PRD Dynamic Curriculum)", ()
       system: "Curriculum architect",
       user: "Learner Goal:\nTitle: Master Oil Painting\nDomain: Arts\nStarting Level: beginner",
       schema: {},
+      maxOutputTokens: 2000,
+      temperature: 0.2,
     });
 
     expect(graphResult.data.skills).toBeDefined();
@@ -188,6 +189,8 @@ describe("Dynamic Field Goals & Learning Resources (PRD Dynamic Curriculum)", ()
       system: "Curriculum architect",
       user: "Learner Goal:\nTitle: Piano lessons\nDomain: Piano musical\nStarting Level: beginner",
       schema: {},
+      maxOutputTokens: 2000,
+      temperature: 0.2,
     });
 
     expect(graphResult.data.skills).toBeDefined();
@@ -213,6 +216,8 @@ describe("Dynamic Field Goals & Learning Resources (PRD Dynamic Curriculum)", ()
       system: "Curriculum architect",
       user: "Learner Goal:\nTitle: French Pastry & Baking\nDomain: Culinary Arts\nStarting Level: beginner",
       schema: {},
+      maxOutputTokens: 2000,
+      temperature: 0.2,
     });
 
     expect(graphResult.data.skills).toBeDefined();

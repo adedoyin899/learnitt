@@ -26,8 +26,8 @@ export interface AIStructuredArgs {
   system: string;
   user: string;
   schema: Record<string, unknown>;
-  maxOutputTokens: number;
-  temperature: number;
+  maxOutputTokens?: number;
+  temperature?: number;
 }
 
 export interface AIStructuredResponse<T> {
