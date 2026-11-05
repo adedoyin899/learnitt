@@ -142,19 +142,37 @@ export class MockSearchProvider implements SearchProvider {
         } else if (
           cleanQuery.includes("music") ||
           cleanQuery.includes("piano") ||
-          cleanQuery.includes("guitar")
+          cleanQuery.includes("guitar") ||
+          cleanQuery.includes("scale") ||
+          cleanQuery.includes("chord") ||
+          cleanQuery.includes("notation") ||
+          cleanQuery.includes("clef") ||
+          cleanQuery.includes("rhythm") ||
+          cleanQuery.includes("metronome") ||
+          cleanQuery.includes("pedal") ||
+          cleanQuery.includes("sight-reading") ||
+          cleanQuery.includes("triad") ||
+          cleanQuery.includes("arpeggio") ||
+          cleanQuery.includes("repertoire") ||
+          cleanQuery.includes("keyboard")
         ) {
           results.push(
             {
-              url: "https://en.wikipedia.org/wiki/Music_theory",
-              title: "Music Theory & Chord Progressions",
-              snippet: "The practices and possibilities of music, harmony, counterpoint, and rhythm.",
+              url: "https://en.wikipedia.org/wiki/Piano",
+              title: "Piano Technique, Keyboard Layout & Mechanics",
+              snippet: "Comprehensive guide to acoustic and digital pianos, keyboard posture, pedaling, and finger dexterity.",
               domain: "en.wikipedia.org",
             },
             {
-              url: "https://en.wikipedia.org/wiki/Counterpoint",
-              title: "Counterpoint & Polyphony",
-              snippet: "The relationship between two or more musical lines that are harmonically interdependent.",
+              url: "https://en.wikipedia.org/wiki/Music_theory",
+              title: "Music Theory, Scales & Chord Progressions",
+              snippet: "The practices and possibilities of music, harmony, scales, counterpoint, and rhythm.",
+              domain: "en.wikipedia.org",
+            },
+            {
+              url: "https://en.wikipedia.org/wiki/Musical_notation",
+              title: "Musical Notation, Grand Staff & Sight-Reading",
+              snippet: "Reading treble and bass clefs, key signatures, time signatures, and rhythmic subdivisions.",
               domain: "en.wikipedia.org",
             }
           );

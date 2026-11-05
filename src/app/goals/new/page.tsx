@@ -16,10 +16,12 @@ import { ArrowLeft, ArrowRight, CheckCircle2, FileText, Loader2, Sparkles, Uploa
 
 const DOMAIN_SUGGESTIONS = [
   "Data Engineering",
+  "Piano & Music Theory",
+  "Visual Arts & Painting",
   "Health Analytics",
   "Cloud Architecture",
   "Machine Learning",
-  "Distributed Systems",
+  "Culinary Arts",
 ];
 
 const WEEKDAY_NAMES = [

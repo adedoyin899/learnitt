@@ -36,12 +36,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 
   // 2. Fetch resources for this goal
-  let { data: resources, error: resErr } = await supabase
+  const { data: initialResources, error: resErr } = await supabase
     .from("resources")
     .select("*")
     .eq("goal_id", goalId)
     .eq("owner_id", user.id)
     .order("found_at", { ascending: false });
+  let resources = initialResources;
 
   if (resErr) {
     return NextResponse.json(

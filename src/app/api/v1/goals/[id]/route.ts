@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { calculateFeasibility, SkillFeasibilityItem } from "@/lib/planner/feasibility";
+import { executeAITaskWithRetry } from "@/lib/ai/core";
+import { persistSkillGraphForGoal, SkillGraphPayloadItem } from "@/lib/planner/persist-graph";
+import { discoverResourcesForGoal, approveResource } from "@/lib/discovery/service";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -33,15 +36,62 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   }
 
   // 2. Fetch skills
-  const { data: skills, error: skillsErr } = await supabase
+  const { data: initialSkills, error: skillsErr } = await supabase
     .from("skills")
     .select("*")
     .eq("goal_id", id)
     .eq("owner_id", user.id)
     .order("position", { ascending: true });
+  let skills = initialSkills;
 
   if (skillsErr) {
     return NextResponse.json({ error: skillsErr.message }, { status: 500 });
+  }
+
+  // 2b. Auto-heal goals whose domain is non-SQL/non-Data-Engineering but still have legacy SQL fixture skills
+  const goalContext = `${goal.title || ""} ${goal.domain || ""}`.toLowerCase();
+  const isSqlOrDataEngGoal =
+    /\b(data\s*engineer|data\s*engineering|sql|database|warehouse|spark|airflow|dbt|kafka|pipeline)\b/i.test(
+      goalContext
+    );
+  const hasMismatchedSqlSkills =
+    !isSqlOrDataEngGoal &&
+    (skills || []).some((s) => s.name === "SQL & Relational Modeling Fundamentals");
+
+  if (hasMismatchedSqlSkills) {
+    try {
+      const regen = await executeAITaskWithRetry<{ skills?: SkillGraphPayloadItem[] }>({
+        ownerId: user.id,
+        task: "skill_graph",
+        payload: {
+          goal_id: goal.id,
+          title: goal.title,
+          domain: goal.domain || goal.title,
+          starting_level: goal.starting_level || "beginner",
+          target_date: goal.target_date,
+          weekly_hours: Number(goal.weekly_hours),
+        },
+        dbClient: supabase,
+        skipCache: true,
+      });
+
+      const newSkills = regen.data?.skills || [];
+      if (newSkills.length > 0) {
+        await supabase.from("resources").delete().eq("goal_id", id).eq("owner_id", user.id);
+        await persistSkillGraphForGoal(supabase, user.id, id, newSkills, "ai");
+        const { data: refreshedSkills } = await supabase
+          .from("skills")
+          .select("*")
+          .eq("goal_id", id)
+          .eq("owner_id", user.id)
+          .order("position", { ascending: true });
+        if (refreshedSkills) {
+          skills = refreshedSkills;
+        }
+      }
+    } catch (regenErr) {
+      console.warn("[GoalGET] Auto-heal skill graph skipped:", regenErr);
+    }
   }
 
   // 3. Fetch prerequisites
@@ -52,6 +102,58 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   if (prereqErr) {
     return NextResponse.json({ error: prereqErr.message }, { status: 500 });
+  }
+
+  // 3b. Fetch complementary learning resources for this goal (and auto-provision if empty)
+  let { data: goalResources } = await supabase
+    .from("resources")
+    .select("id, skill_id, title, url, domain, type, estimated_minutes, relevance, approval, found_by_query")
+    .eq("goal_id", id)
+    .eq("owner_id", user.id)
+    .neq("approval", "rejected")
+    .order("relevance", { ascending: false });
+
+  if (
+    (!goalResources || goalResources.length === 0) &&
+    skills &&
+    skills.length > 0 &&
+    !process.env.VITEST
+  ) {
+    try {
+      const disc = await discoverResourcesForGoal({
+        goalId: id,
+        ownerId: user.id,
+        dbClient: supabase,
+        maxSkillsToDiscover: 4,
+      });
+      for (const r of disc.resourcesCreated) {
+        try {
+          await approveResource(r.id, user.id, supabase);
+        } catch {
+          // ignore if already approved
+        }
+      }
+      const { data: refreshedResources } = await supabase
+        .from("resources")
+        .select("id, skill_id, title, url, domain, type, estimated_minutes, relevance, approval, found_by_query")
+        .eq("goal_id", id)
+        .eq("owner_id", user.id)
+        .neq("approval", "rejected")
+        .order("relevance", { ascending: false });
+      if (refreshedResources) {
+        goalResources = refreshedResources;
+      }
+    } catch (discErr) {
+      console.warn("[GoalGET] Complementary resource auto-discovery skipped:", discErr);
+    }
+  }
+
+  const resourcesBySkill = new Map<string, typeof goalResources>();
+  for (const r of goalResources || []) {
+    if (!r.skill_id) continue;
+    const list = resourcesBySkill.get(r.skill_id) || [];
+    list.push(r);
+    resourcesBySkill.set(r.skill_id, list);
   }
 
   // Group prerequisites by skill_id
@@ -65,6 +167,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   const enrichedSkills = (skills || []).map((s) => ({
     ...s,
     prereq_ids: prereqMap.get(s.id) || [],
+    resources: resourcesBySkill.get(s.id) || [],
   }));
 
   // 4. Calculate dynamic feasibility
@@ -88,6 +191,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   return NextResponse.json({
     goal,
     skills: enrichedSkills,
+    resources: goalResources || [],
     feasibility,
   });
 }

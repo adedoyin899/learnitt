@@ -24,12 +24,23 @@ export class MockAIProvider implements AIProvider {
   }
 
   private getDeterministicFixture(task: AITask, prompt: string): unknown {
-    const isHealth = prompt.toLowerCase().includes("health") || prompt.toLowerCase().includes("biostatistics");
+    const titleMatch = prompt.match(/Title:\s*([^\n\r]+)/i);
+    const domainMatch = prompt.match(/Domain:\s*([^\n\r]+)/i);
+    const goalContext =
+      titleMatch || domainMatch
+        ? `${titleMatch?.[1] || ""} ${domainMatch?.[1] || ""}`.trim()
+        : prompt;
+    const goalLower = goalContext.toLowerCase();
+
+    const isHealth = /\b(health|clinical|biostatistics|epidemiology|medical)\b/i.test(goalLower);
+    const isCulinaryOrOtherArts = /\b(culinary|martial|liberal|language\s+arts|pastry|baking|cooking)\b/i.test(goalLower);
     const isArt =
-      prompt.toLowerCase().includes("art") ||
-      prompt.toLowerCase().includes("paint") ||
-      prompt.toLowerCase().includes("draw") ||
-      prompt.toLowerCase().includes("illustration");
+      !isCulinaryOrOtherArts &&
+      /\b(art|arts|paint|painting|draw|drawing|illustration|sketch|watercolor)\b/i.test(goalLower);
+    const isMusic = /\b(piano|music|musical|guitar|violin|keyboard|chord|melody|rhythm|jazz|classical|singing|vocal)\b/i.test(goalLower);
+    const isDataEng =
+      /\b(data\s*engineer|data\s*engineering|sql|database|warehouse|spark|airflow|dbt|kafka|pipeline)\b/i.test(goalLower) ||
+      (!titleMatch && !domainMatch && !isHealth && !isArt && !isMusic);
 
     switch (task) {
       case "skill_graph":
@@ -350,6 +361,285 @@ export class MockAIProvider implements AIProvider {
                 verification_type: "artifact",
                 mvd_minutes: 25,
                 mvd_task: "Produce an original finished capstone painting incorporating underpainting and glazing.",
+              },
+            ],
+          };
+        }
+
+        if (isMusic) {
+          return {
+            skills: [
+              {
+                id: "sk_mus_01",
+                name: "Keyboard Posture, Hand Position & Finger Numbering",
+                description: "Ergonomic bench height, curved finger posture, relaxed wrist alignment, and 1-5 finger numbering.",
+                prereq_ids: [],
+                estimated_minutes: { min: 45, max: 90 },
+                difficulty: 1,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: "Play five-finger C major patterns hands separately with relaxed wrists at 60 BPM.",
+              },
+              {
+                id: "sk_mus_02",
+                name: "Musical Staff Notation: Treble & Bass Clef Reading",
+                description: "Grand staff note identification, ledger lines, middle C orientation, and interval recognition.",
+                prereq_ids: [],
+                estimated_minutes: { min: 60, max: 120 },
+                difficulty: 1,
+                verification_type: "recall",
+                mvd_minutes: 15,
+                mvd_task: "Sight-read and name 20 randomized notes across treble and bass clefs in under 2 minutes.",
+              },
+              {
+                id: "sk_mus_03",
+                name: "Rhythm, Time Signatures & Metronome Timing",
+                description: "Whole, half, quarter, eighth, and dotted notes, rests, 4/4 and 3/4 meter subdivision.",
+                prereq_ids: ["sk_mus_01"],
+                estimated_minutes: { min: 60, max: 120 },
+                difficulty: 1,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: "Clap and count aloud 8 bars of mixed quarter and eighth-note rhythms with a metronome.",
+              },
+              {
+                id: "sk_mus_04",
+                name: "Major Scales & Thumb-Under Technique",
+                description: "Whole-half step tetra-chord patterns, C, G, D, and F major scales, smooth thumb crossings.",
+                prereq_ids: ["sk_mus_01", "sk_mus_02"],
+                estimated_minutes: { min: 90, max: 150 },
+                difficulty: 2,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: "Play C and G major two-octave scales hands separately with clean thumb-under transitions.",
+              },
+              {
+                id: "sk_mus_05",
+                name: "Triads, Chord Construction & Inversions",
+                description: "Major, minor, diminished triads, root position, first and second inversions across keys.",
+                prereq_ids: ["sk_mus_02", "sk_mus_04"],
+                estimated_minutes: { min: 90, max: 180 },
+                difficulty: 2,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: "Play root, 1st, and 2nd inversions for C, F, G, and A minor triads smoothly.",
+              },
+              {
+                id: "sk_mus_06",
+                name: "Two-Hand Coordination & Independence",
+                description: "Playing melody in right hand over left-hand bass roots, Alberti bass, and broken chords.",
+                prereq_ids: ["sk_mus_03", "sk_mus_05"],
+                estimated_minutes: { min: 120, max: 210 },
+                difficulty: 2,
+                verification_type: "applied",
+                mvd_minutes: 20,
+                mvd_task: "Practice 8 bars playing a steady left-hand broken chord pattern under a right-hand melody.",
+              },
+              {
+                id: "sk_mus_07",
+                name: "Natural, Harmonic & Melodic Minor Scales",
+                description: "Relative minor relationships, circle of fifths, and fingerings for A, E, and D minor.",
+                prereq_ids: ["sk_mus_04"],
+                estimated_minutes: { min: 90, max: 150 },
+                difficulty: 2,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: "Play A harmonic minor two octaves hands together at a steady 72 BPM.",
+              },
+              {
+                id: "sk_mus_08",
+                name: "Diatonic Chord Progressions & Cadences",
+                description: "I-IV-V-I, ii-V-I, and I-V-vi-IV progressions, voice leading, and harmonic cadences.",
+                prereq_ids: ["sk_mus_05", "sk_mus_06"],
+                estimated_minutes: { min: 90, max: 180 },
+                difficulty: 2,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: "Play I-IV-V-I and ii-V-I progressions in three keys using closest-inversion voice leading.",
+              },
+              {
+                id: "sk_mus_09",
+                name: "Articulation, Dynamics & Damper Pedal Control",
+                description: "Legato vs staccato phrasing, crescendo/diminuendo shading, and syncopated pedaling.",
+                prereq_ids: ["sk_mus_06"],
+                estimated_minutes: { min: 90, max: 150 },
+                difficulty: 2,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: "Connect a 4-chord progression using syncopated damper pedaling with zero harmonic blur.",
+              },
+              {
+                id: "sk_mus_10",
+                name: "Seventh Chords & Accompaniment Voicings",
+                description: "Major 7th, dominant 7th, and minor 7th chords, shell voicings, and rhythmic comping.",
+                prereq_ids: ["sk_mus_07", "sk_mus_08"],
+                estimated_minutes: { min: 120, max: 210 },
+                difficulty: 3,
+                verification_type: "applied",
+                mvd_minutes: 20,
+                mvd_task: "Voice a ii7-V7-Imaj7 progression in C and F major with root in left hand and guide tones in right.",
+              },
+              {
+                id: "sk_mus_11",
+                name: "Sight-Reading & Ear Training Fluency",
+                description: "Reading unfamiliar lead sheets and two-stave pieces at tempo, melodic interval dictation.",
+                prereq_ids: ["sk_mus_08", "sk_mus_09"],
+                estimated_minutes: { min: 90, max: 180 },
+                difficulty: 3,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: "Sight-read an unfamiliar 16-bar piece slowly hands together without stopping at barlines.",
+              },
+              {
+                id: "sk_mus_12",
+                name: "Complete Repertoire Performance Capstone",
+                description: "Memorization, expressive interpretation, tempo stability, and full solo piece recording.",
+                prereq_ids: ["sk_mus_09", "sk_mus_10", "sk_mus_11"],
+                estimated_minutes: { min: 150, max: 300 },
+                difficulty: 4,
+                verification_type: "artifact",
+                mvd_minutes: 25,
+                mvd_task: "Record a complete play-through of your chosen repertoire piece from memory with dynamics.",
+              },
+            ],
+          };
+        }
+
+        if (!isDataEng) {
+          const subject = (titleMatch?.[1] || domainMatch?.[1] || "Subject").trim();
+          return {
+            skills: [
+              {
+                id: "sk_gen_01",
+                name: `${subject}: Core Principles & Foundations`,
+                description: `Essential terminology, foundational concepts, and mental models for ${subject}.`,
+                prereq_ids: [],
+                estimated_minutes: { min: 60, max: 120 },
+                difficulty: 1,
+                verification_type: "recall",
+                mvd_minutes: 15,
+                mvd_task: `Summarize the 5 foundational principles of ${subject} in your own words.`,
+              },
+              {
+                id: "sk_gen_02",
+                name: `${subject}: Essential Tools & Setup`,
+                description: `Setting up the core workspace, instruments, materials, and standard workflow for ${subject}.`,
+                prereq_ids: [],
+                estimated_minutes: { min: 60, max: 90 },
+                difficulty: 1,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: `Complete a 15-minute foundational drill using the primary tools of ${subject}.`,
+              },
+              {
+                id: "sk_gen_03",
+                name: `${subject}: Fundamental Techniques`,
+                description: `Step-by-step practice of the primary building blocks and repeatable exercises in ${subject}.`,
+                prereq_ids: ["sk_gen_01", "sk_gen_02"],
+                estimated_minutes: { min: 90, max: 150 },
+                difficulty: 2,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: `Execute 3 focused repetitions of core ${subject} technique with self-check.`,
+              },
+              {
+                id: "sk_gen_04",
+                name: `${subject}: Structure & Composition`,
+                description: `Understanding how components combine into cohesive structures within ${subject}.`,
+                prereq_ids: ["sk_gen_03"],
+                estimated_minutes: { min: 90, max: 180 },
+                difficulty: 2,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: `Analyze and diagram one well-known example in ${subject}.`,
+              },
+              {
+                id: "sk_gen_05",
+                name: `${subject}: Intermediate Patterns & Methods`,
+                description: `Expanding fluency with common patterns, idioms, and structured problem solving in ${subject}.`,
+                prereq_ids: ["sk_gen_03"],
+                estimated_minutes: { min: 90, max: 180 },
+                difficulty: 2,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: `Practice one intermediate pattern in ${subject} and note key adjustments.`,
+              },
+              {
+                id: "sk_gen_06",
+                name: `${subject}: Guided Applied Practice`,
+                description: `Completing structured end-to-end exercises that combine multiple ${subject} skills.`,
+                prereq_ids: ["sk_gen_04", "sk_gen_05"],
+                estimated_minutes: { min: 120, max: 210 },
+                difficulty: 2,
+                verification_type: "applied",
+                mvd_minutes: 20,
+                mvd_task: `Complete a 20-minute applied study session producing a small working output.`,
+              },
+              {
+                id: "sk_gen_07",
+                name: `${subject}: Diagnostics & Error Correction`,
+                description: `Identifying common pitfalls, refining precision, and self-correcting technique in ${subject}.`,
+                prereq_ids: ["sk_gen_05"],
+                estimated_minutes: { min: 90, max: 150 },
+                difficulty: 3,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: `Review recent work in ${subject} and fix 2 specific areas of friction.`,
+              },
+              {
+                id: "sk_gen_08",
+                name: `${subject}: Advanced Concepts & Nuance`,
+                description: `Deepening mastery of subtle mechanics, style, and higher-complexity scenarios in ${subject}.`,
+                prereq_ids: ["sk_gen_06", "sk_gen_07"],
+                estimated_minutes: { min: 120, max: 210 },
+                difficulty: 3,
+                verification_type: "applied",
+                mvd_minutes: 20,
+                mvd_task: `Perform a focused drill on one advanced variation in ${subject}.`,
+              },
+              {
+                id: "sk_gen_09",
+                name: `${subject}: Case Studies & Master Analysis`,
+                description: `Studying benchmark works and real-world applications in ${subject}.`,
+                prereq_ids: ["sk_gen_06"],
+                estimated_minutes: { min: 90, max: 150 },
+                difficulty: 3,
+                verification_type: "recall",
+                mvd_minutes: 15,
+                mvd_task: `Write 3 takeaways from studying an expert reference in ${subject}.`,
+              },
+              {
+                id: "sk_gen_10",
+                name: `${subject}: Independent Variation & Adaptation`,
+                description: `Adapting techniques to novel prompts and unscripted scenarios in ${subject}.`,
+                prereq_ids: ["sk_gen_08", "sk_gen_09"],
+                estimated_minutes: { min: 120, max: 210 },
+                difficulty: 3,
+                verification_type: "applied",
+                mvd_minutes: 20,
+                mvd_task: `Create an original short study applying two techniques from ${subject}.`,
+              },
+              {
+                id: "sk_gen_11",
+                name: `${subject}: Fluency, Speed & Polish`,
+                description: `Building consistency, confidence, and quality under realistic conditions in ${subject}.`,
+                prereq_ids: ["sk_gen_10"],
+                estimated_minutes: { min: 90, max: 180 },
+                difficulty: 3,
+                verification_type: "applied",
+                mvd_minutes: 15,
+                mvd_task: `Run a timed 15-minute fluency session in ${subject}.`,
+              },
+              {
+                id: "sk_gen_12",
+                name: `${subject}: Final Capstone Project`,
+                description: `Planning, executing, and reviewing a complete, polished ${subject} capstone work.`,
+                prereq_ids: ["sk_gen_10", "sk_gen_11"],
+                estimated_minutes: { min: 180, max: 300 },
+                difficulty: 4,
+                verification_type: "artifact",
+                mvd_minutes: 25,
+                mvd_task: `Complete and document the next milestone of your ${subject} capstone.`,
               },
             ],
           };

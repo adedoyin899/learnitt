@@ -15,8 +15,7 @@ class InMemoryDbAdapter {
   };
 
   from(table: string) {
-    const self = this;
-    let rows = self.tables[table] || [];
+    const rows = this.tables[table] || [];
 
     const builder: any = {
       _filters: [] as ((row: any) => boolean)[],
@@ -75,7 +74,7 @@ class InMemoryDbAdapter {
             }
           }
         }
-        let filtered = rows.filter((r: any) => builder._filters.every((f: any) => f(r)));
+        const filtered = rows.filter((r: any) => builder._filters.every((f: any) => f(r)));
         return { data: filtered[0] || null, error: null };
       },
       then(resolve: any) {
@@ -178,5 +177,49 @@ describe("Dynamic Field Goals & Learning Resources (PRD Dynamic Curriculum)", ()
 
     const updatedPlanItem = db.tables.plan_items.find((p) => p.id === "plan_item_art_01");
     expect(updatedPlanItem.resource_id).toBe(topResource.id);
+  });
+
+  it("dynamically generates Piano & Music curriculum and music resources (never SQL)", async () => {
+    const ai = new MockAIProvider();
+    const search = new MockSearchProvider();
+
+    const graphResult = await ai.generateStructured<any>({
+      task: "skill_graph",
+      system: "Curriculum architect",
+      user: "Learner Goal:\nTitle: Piano lessons\nDomain: Piano musical\nStarting Level: beginner",
+      schema: {},
+    });
+
+    expect(graphResult.data.skills).toBeDefined();
+    expect(graphResult.data.skills.length).toBe(12);
+    expect(graphResult.data.skills[0].name).toContain("Keyboard Posture");
+    expect(
+      graphResult.data.skills.some((s: any) => s.name.toLowerCase().includes("sql"))
+    ).toBe(false);
+
+    const searchResults = await search.search({
+      query: `${graphResult.data.skills[0].name} Piano musical`,
+      maxResults: 3,
+    });
+    expect(searchResults.length).toBeGreaterThan(0);
+    expect(searchResults[0].url).toContain("wikipedia.org");
+  });
+
+  it("dynamically generates tailored skills for any arbitrary subject (e.g. Culinary Pastry)", async () => {
+    const ai = new MockAIProvider();
+
+    const graphResult = await ai.generateStructured<any>({
+      task: "skill_graph",
+      system: "Curriculum architect",
+      user: "Learner Goal:\nTitle: French Pastry & Baking\nDomain: Culinary Arts\nStarting Level: beginner",
+      schema: {},
+    });
+
+    expect(graphResult.data.skills).toBeDefined();
+    expect(graphResult.data.skills.length).toBe(12);
+    expect(graphResult.data.skills[0].name).toContain("French Pastry & Baking");
+    expect(
+      graphResult.data.skills.some((s: any) => s.name.toLowerCase().includes("sql"))
+    ).toBe(false);
   });
 });

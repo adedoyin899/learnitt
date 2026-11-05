@@ -2,6 +2,7 @@ import { FallbackAIProvider } from "../ai/adapters/fallback-adapter";
 import { MockAIProvider } from "../ai/adapters/mock-adapter";
 import { RealAIProvider } from "../ai/adapters/real-adapter";
 import { env } from "../env";
+import { AI_CONFIG } from "../config/ai";
 import { MockEmailProvider } from "./mock/mock-email";
 import { MockPushProvider } from "./mock/mock-push";
 import { MockSearchProvider } from "./mock/mock-search";
@@ -21,12 +22,22 @@ let pushProviderInstance: PushProvider | null = null;
 export function buildAIProviderFromEnv(): AIProvider {
   let primary: AIProvider;
 
-  if (env.MOCK_MODE || env.AI_PROVIDER === "mock") {
+  // A real AI provider is used whenever one is explicitly configured with a real key
+  // outside test mode, even if other integrations still run in mock mode.
+  // With zero real keys or in Vitest mock mode, the app stays fully on mocks (Invariant 2).
+  const isTestEnv = Boolean(process.env.VITEST) || process.env.NODE_ENV === "test";
+  const hasRealAIKey = Boolean(env.AI_API_KEY) && !String(env.AI_API_KEY).startsWith("mock-");
+  const useMockAI =
+    env.AI_PROVIDER === "mock" ||
+    (isTestEnv && env.MOCK_MODE) ||
+    (env.MOCK_MODE && !hasRealAIKey);
+
+  if (useMockAI) {
     primary = new MockAIProvider({ model: env.AI_MODEL });
   } else {
     primary = new RealAIProvider({
       provider: env.AI_PROVIDER,
-      model: env.AI_MODEL,
+      model: env.AI_MODEL.startsWith("mock") ? AI_CONFIG.DEFAULT_MODEL : env.AI_MODEL,
       apiKey: env.AI_API_KEY,
     });
   }
@@ -46,6 +57,12 @@ export function buildAIProviderFromEnv(): AIProvider {
         apiKey: env.AI_FALLBACK_API_KEY || env.AI_API_KEY,
       });
     }
+  } else if (!useMockAI && !isTestEnv) {
+    // Ensure resilient fallback to dynamic MockAIProvider if real provider rate-limits
+    fallback = new MockAIProvider({
+      id: "mock-fallback",
+      model: env.AI_MODEL,
+    });
   }
 
   if (fallback) {

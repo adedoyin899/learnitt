@@ -10,7 +10,7 @@ interface RouteParams {
  * POST /api/v1/goals/[id]/skill-graph
  * Enqueues the skill_graph AI job (PRD 7.3, Epic A2).
  */
-export async function POST(_req: NextRequest, { params }: RouteParams) {
+export async function POST(req: NextRequest, { params }: RouteParams) {
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user }, error: authErr } = await supabase.auth.getUser();
@@ -19,10 +19,17 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  let body: { skipCache?: boolean } = {};
+  try {
+    body = await req.json();
+  } catch {
+    // Empty body is fine
+  }
+
   // 1. Verify goal exists and belongs to user
   const { data: goal, error: goalErr } = await supabase
     .from("goals")
-    .select("id, title, domain, starting_level")
+    .select("id, title, domain, starting_level, target_date, weekly_hours")
     .eq("id", id)
     .eq("owner_id", user.id)
     .single();
@@ -32,6 +39,10 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
   }
 
   try {
+    if (body.skipCache) {
+      await supabase.from("resources").delete().eq("goal_id", id).eq("owner_id", user.id);
+    }
+
     // 2. Enqueue the skill_graph job
     const { jobId } = await enqueueJob({
       ownerId: user.id,
@@ -41,6 +52,9 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
         title: goal.title,
         domain: goal.domain,
         starting_level: goal.starting_level,
+        target_date: goal.target_date,
+        weekly_hours: Number(goal.weekly_hours || 6),
+        ...(body.skipCache ? { refreshed_at: new Date().toISOString() } : {}),
       },
     });
 
