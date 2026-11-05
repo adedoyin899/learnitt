@@ -5,6 +5,13 @@
  * Triggers a single cron worker tick on the local or target server.
  */
 
+import fs from "fs";
+
+if (process.loadEnvFile) {
+  if (fs.existsSync(".env.local")) process.loadEnvFile(".env.local");
+  else if (fs.existsSync(".env")) process.loadEnvFile(".env");
+}
+
 const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
 const CRON_SECRET = process.env.CRON_SECRET || "mock-cron-secret";
 

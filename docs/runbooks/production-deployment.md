@@ -19,7 +19,10 @@ Apply migrations in numerical sequence using the Supabase CLI or SQL Editor:
 supabase link --project-ref <your-project-ref>
 supabase db push
 
-# Or run files in order via SQL Editor:
+# Or run the consolidated all-in-one script via Supabase SQL Editor:
+# Copy and execute: supabase/combined_migration.sql
+
+# Or run individual files in order via SQL Editor:
 # 1. supabase/migrations/20261019000000_create_profiles.sql
 # 2. supabase/migrations/20261019000001_full_schema_and_rls.sql
 # 3. supabase/migrations/20261019000002_search_chunks_rpc.sql

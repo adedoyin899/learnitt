@@ -12,7 +12,13 @@
  *   - Starting Level: beginner
  */
 
+import fs from "fs";
 import { createClient } from "@supabase/supabase-js";
+
+if (process.loadEnvFile) {
+  if (fs.existsSync(".env.local")) process.loadEnvFile(".env.local");
+  else if (fs.existsSync(".env")) process.loadEnvFile(".env");
+}
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
