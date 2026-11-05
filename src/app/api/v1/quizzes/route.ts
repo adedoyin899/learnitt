@@ -72,8 +72,8 @@ export async function GET(req: NextRequest) {
     // 4. Fetch questions and attempts for these quizzes
     const quizIds = (quizzes || []).map((q) => q.id);
 
-    let questionsByQuiz = new Map<string, Array<{ id: string; type: string }>>();
-    let allQuestionIds: string[] = [];
+    const questionsByQuiz = new Map<string, Array<{ id: string; type: string }>>();
+    const allQuestionIds: string[] = [];
 
     if (quizIds.length > 0) {
       const { data: questions } = await supabase
@@ -90,8 +90,8 @@ export async function GET(req: NextRequest) {
     }
 
     // 5. Fetch attempts & grades for these questions
-    let gradesByQuestionId = new Map<string, { total: number | null; verdict: string | null }>();
-    let latestAttemptTimeByQuiz = new Map<string, string>();
+    const gradesByQuestionId = new Map<string, { total: number | null; verdict: string | null }>();
+    const latestAttemptTimeByQuiz = new Map<string, string>();
 
     if (allQuestionIds.length > 0) {
       const { data: attempts } = await supabase

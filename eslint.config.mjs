@@ -14,6 +14,7 @@ const eslintConfig = [
     ignores: [
       ".agent/**",
       ".next/**",
+      ".vercel/**",
       "node_modules/**",
       "coverage/**",
       "supabase/**",
